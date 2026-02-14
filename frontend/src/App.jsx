@@ -1,16 +1,15 @@
-import React from "react"; // ← fix here
+import React from "react";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
-import Home from "./pages/Home.jsx";       // ✅ Correct relative path
-
-//import Login from "./components/Login.jsx"; // Make sure Login.jsx exists
-//import Register from "./components/Register.jsx"; // Make sure Register.jsx exists
+import Home from "./pages/Home.jsx";
+import DressListing from './pages/DressListing';
 
 function App() {
   return (
     <Router>
       <Routes>
         <Route path="/" element={<Home />} />
-        
+        <Route path="/dresses" element={<DressListing />} />
+        {/* Add more routes here as needed */}
       </Routes>
     </Router>
   );

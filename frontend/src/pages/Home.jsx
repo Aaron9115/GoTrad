@@ -1,5 +1,7 @@
 import React, { useEffect } from "react";
 import { Link } from "react-router-dom";
+import Navbar from "../components/Navbar";  // ✅ Correct
+import Footer from "../components/Footer";  // ✅ Correct
 import "./Home.css";
 
 export default function Home() {
@@ -17,18 +19,6 @@ export default function Home() {
       button.addEventListener('click', handleFaqClick);
     });
 
-    // Navbar scroll effect
-    const handleScroll = () => {
-      const navbar = document.querySelector('.navbar');
-      if (window.scrollY > 50) {
-        navbar.classList.add('scrolled');
-      } else {
-        navbar.classList.remove('scrolled');
-      }
-    };
-
-    window.addEventListener('scroll', handleScroll);
-
     // Hover video simulation
     const dressCards = document.querySelectorAll('.dress-card');
     dressCards.forEach(card => {
@@ -38,12 +28,10 @@ export default function Home() {
       
       if (video) {
         card.addEventListener('mouseenter', () => {
-          // In real implementation: video.play();
           if (indicator) indicator.style.opacity = '1';
         });
         
         card.addEventListener('mouseleave', () => {
-          // video.pause();
           if (indicator) indicator.style.opacity = '0';
         });
       }
@@ -60,7 +48,6 @@ export default function Home() {
 
     // Cleanup
     return () => {
-      window.removeEventListener('scroll', handleScroll);
       document.querySelectorAll('.faq-question').forEach(button => {
         button.removeEventListener('click', handleFaqClick);
       });
@@ -69,31 +56,10 @@ export default function Home() {
 
   return (
     <div className="home">
-      {/* 📍 NAVIGATION BAR - Fixed frosted glass */}
-      <nav className="navbar glass-panel">
-        <div className="nav-container">
-          <div className="logo">
-            <i className="ri-vip-crown-line"></i>
-            <span>Heritage Rentals</span>
-          </div>
-          <div className="nav-links">
-            <a href="#hero" className="nav-link active">Home</a>
-            <a href="#collection" className="nav-link">Collection</a>
-            <a href="#process" className="nav-link">Process</a>
-            <a href="#faq" className="nav-link">FAQ</a>
-            <a href="#contact" className="nav-link">Contact</a>
-          </div>
-          <Link to="/book" className="btn-primary">
-            <span>Book Now</span>
-            <i className="ri-arrow-right-line"></i>
-          </Link>
-          <button className="mobile-menu-btn">
-            <i className="ri-menu-line"></i>
-          </button>
-        </div>
-      </nav>
+      {/* Reusable Navbar */}
+      <Navbar />
 
-      {/* 🌟 HERO SECTION - Full screen with frosted card */}
+      {/* 🌟 HERO SECTION */}
       <section id="hero" className="hero">
         <div className="hero-bg-overlay"></div>
         <div className="hero-content glass-panel">
@@ -110,7 +76,7 @@ export default function Home() {
             Authentic craftsmanship, effortless experience.
           </p>
           <div className="hero-buttons">
-            <Link to="/collection" className="btn-primary btn-large">
+            <Link to="/dresses" className="btn-primary btn-large">
               <span>Explore Collection</span>
               <i className="ri-arrow-right-line"></i>
             </Link>
@@ -136,7 +102,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* 💎 ABOUT SECTION - 4 feature cards */}
+      {/* 💎 ABOUT SECTION */}
       <section id="about" className="section">
         <div className="container">
           <div className="section-header">
@@ -176,7 +142,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* 👗 DRESS COLLECTION - Interactive Gallery */}
+      {/* 👗 DRESS COLLECTION */}
       <section id="collection" className="section bg-white-soft">
         <div className="container">
           <div className="section-header">
@@ -184,7 +150,6 @@ export default function Home() {
             <p className="section-sub">Hover over any dress to see it in motion</p>
           </div>
           
-          {/* Category filters */}
           <div className="filter-tabs">
             <button className="filter-btn active">All</button>
             <button className="filter-btn">Wedding</button>
@@ -192,7 +157,6 @@ export default function Home() {
             <button className="filter-btn">Party</button>
           </div>
 
-          {/* Dress cards grid */}
           <div className="dress-grid">
             {/* Card 1 */}
             <div className="dress-card glass-panel">
@@ -354,7 +318,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* 📋 RENTAL PROCESS - 4 step timeline */}
+      {/* 📋 RENTAL PROCESS */}
       <section id="process" className="section">
         <div className="container">
           <div className="section-header">
@@ -409,7 +373,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ❓ FAQ SECTION - Accordion */}
+      {/* ❓ FAQ SECTION */}
       <section id="faq" className="section bg-white-soft">
         <div className="container">
           <div className="section-header">
@@ -475,7 +439,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* 📞 CONTACT SECTION - 2 columns */}
+      {/* 📞 CONTACT SECTION */}
       <section id="contact" className="section">
         <div className="container">
           <div className="section-header">
@@ -563,43 +527,8 @@ export default function Home() {
         </div>
       </section>
 
-      {/* 🔗 FOOTER - Teal gradient */}
-      <footer className="footer">
-        <div className="container">
-          <div className="footer-grid">
-            <div className="footer-brand">
-              <div className="logo">
-                <i className="ri-vip-crown-line"></i>
-                <span>Heritage Rentals</span>
-              </div>
-              <p className="footer-tagline">Celebrate tradition, effortlessly.</p>
-              <div className="social-links">
-                <a href="#" aria-label="Facebook"><i className="ri-facebook-fill"></i></a>
-                <a href="#" aria-label="Instagram"><i className="ri-instagram-line"></i></a>
-                <a href="#" aria-label="Twitter"><i className="ri-twitter-x-line"></i></a>
-                <a href="#" aria-label="Pinterest"><i className="ri-pinterest-line"></i></a>
-              </div>
-            </div>
-            <div className="footer-links">
-              <h5>Quick Links</h5>
-              <Link to="/about">About</Link>
-              <Link to="/collection">Collection</Link>
-              <Link to="/process">Process</Link>
-              <Link to="/faq">FAQ</Link>
-            </div>
-            <div className="footer-links">
-              <h5>Support</h5>
-              <Link to="/contact">Contact</Link>
-              <Link to="/privacy">Privacy Policy</Link>
-              <Link to="/terms">Terms of Service</Link>
-              <Link to="/returns">Returns</Link>
-            </div>
-          </div>
-          <div className="footer-bottom">
-            <p>© 2026 Heritage Rentals. All rights reserved. Crafted with tradition.</p>
-          </div>
-        </div>
-      </footer>
+      {/* 🔗 FOOTER - Reusable Footer */}
+      <Footer />
     </div>
   );
 }

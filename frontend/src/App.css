@@ -1,5 +1,41 @@
-/* Empty or minimal - your page styles are in Home.css */
-.app {
-  width: 100%;
+/* Reset */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: 'Poppins', sans-serif;
+}
+
+/* Full page gradient background */
+body {
   min-height: 100vh;
+  background: linear-gradient(135deg, #1e1e2f, #2b2b52, #3a3a70);
+  background-attachment: fixed;
+  color: white;
+}
+
+/* Frosted glass base style */
+.glass {
+  background: rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+/* Modern button */
+.btn {
+  padding: 12px 25px;
+  border-radius: 30px;
+  border: none;
+  cursor: pointer;
+  font-weight: 600;
+  transition: 0.3s ease;
+  background: linear-gradient(45deg, #ff7eb3, #ff758c);
+  color: white;
+}
+
+.btn:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 10px 25px rgba(255, 118, 136, 0.4);
 }
