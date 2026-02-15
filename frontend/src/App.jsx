@@ -1,7 +1,9 @@
 import React from "react";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
-import Home from "./pages/Home.jsx";
-import DressListing from './pages/DressListing';
+import Home from "./pages/Home";
+import DressListing from "./pages/DressListing";
+import Booking from "./pages/Booking";
+import AIRecommendation from "./pages/AIRecommendation"; // Add this import
 
 function App() {
   return (
@@ -9,7 +11,8 @@ function App() {
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/dresses" element={<DressListing />} />
-        {/* Add more routes here as needed */}
+        <Route path="/booking/:dressId" element={<Booking />} />
+        <Route path="/ai-recommendation" element={<AIRecommendation />} /> {/* Add this route */}
       </Routes>
     </Router>
   );

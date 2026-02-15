@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom"; // Added useNavigate
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import "./DressListing.css";
@@ -198,6 +198,9 @@ const DressListing = () => {
   const [viewMode, setViewMode] = useState("grid");
   const [activeVideo, setActiveVideo] = useState(0);
   const [usingMockData, setUsingMockData] = useState(false);
+  
+  // Added useNavigate hook
+  const navigate = useNavigate();
 
   // Fetch dresses from backend with fallback to mock data
   useEffect(() => {
@@ -318,6 +321,12 @@ const DressListing = () => {
       description: "Fusion wear combining tradition with contemporary style"
     }
   ];
+
+  // Handle rent now click - NEW FUNCTION
+  const handleRentNow = (e, dressId) => {
+    e.preventDefault();
+    navigate(`/booking/${dressId}`);
+  };
 
   return (
     <div className="dress-listing">
@@ -595,7 +604,7 @@ const DressListing = () => {
                     </div>
                   </div>
                 ) : (
-                  // List View Card
+                  // List View Card - UPDATED with working Rent Now button
                   <div className="dress-list-card">
                     <div className="list-image-wrapper">
                       <img 
@@ -632,10 +641,13 @@ const DressListing = () => {
                         </div>
                         <div className="list-price-section">
                           <span className="list-price">₹{dress.pricePerDay}<span>/day</span></span>
-                          <button className="rent-now-btn" onClick={(e) => {
-                            e.preventDefault();
-                            alert('Booking functionality coming soon!');
-                          }}>Rent Now</button>
+                          {/* UPDATED: Rent Now button now navigates to booking page */}
+                          <button 
+                            className="rent-now-btn" 
+                            onClick={(e) => handleRentNow(e, dress._id)}
+                          >
+                            Rent Now
+                          </button>
                         </div>
                       </div>
                       {dress.owner && (

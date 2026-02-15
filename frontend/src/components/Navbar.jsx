@@ -41,7 +41,7 @@ const Navbar = () => {
       <div className="nav-container">
         {/* Logo */}
         <Link to="/" className="logo">
-          <i className="ri-vip-crown-line"></i>
+          
           <span>GoTrad</span>
         </Link>
 
@@ -51,8 +51,11 @@ const Navbar = () => {
             // On home page - use smooth scroll
             <>
               <button onClick={() => scrollToSection("hero")} className="nav-link">Home</button>
-               <Link to="/dresses" className="nav-link">Collection</Link>  {/* ← CHANGED to Link */}
-              <button onClick={() => scrollToSection("process")} className="nav-link">Process</button>
+              <Link to="/dresses" className="nav-link">Collection</Link>
+              {/* ADDED: AI Recommendation link */}
+              <Link to="/ai-recommendation" className="nav-link">AI Recommendation</Link>
+              {/* ADDED: Virtual Try-On link */}
+              <Link to="/virtual-tryon" className="nav-link">Virtual Try-On</Link>
               <button onClick={() => scrollToSection("faq")} className="nav-link">FAQ</button>
               <button onClick={() => scrollToSection("contact")} className="nav-link">Contact</button>
             </>
@@ -61,7 +64,10 @@ const Navbar = () => {
             <>
               <Link to="/" className="nav-link">Home</Link>
               <Link to="/dresses" className="nav-link">Collection</Link>
-              <Link to="/process" className="nav-link">Process</Link>
+              {/* ADDED: AI Recommendation link */}
+              <Link to="/ai-recommendation" className="nav-link">AI Recommendation</Link>
+              {/* ADDED: Virtual Try-On link */}
+              <Link to="/virtual-tryon" className="nav-link">Virtual Try-On</Link>
               <Link to="/faq" className="nav-link">FAQ</Link>
               <Link to="/contact" className="nav-link">Contact</Link>
             </>
@@ -69,7 +75,7 @@ const Navbar = () => {
         </div>
 
         {/* Book Now Button */}
-        <Link to="/book" className="btn-book">
+        <Link to="/dresses" className="btn-book">
           <span>Book Now</span>
           <i className="ri-arrow-right-line"></i>
         </Link>
@@ -92,14 +98,20 @@ const Navbar = () => {
               <i className="ri-home-line"></i>
               Home
             </button>
-            <button onClick={() => scrollToSection("collection")} className="mobile-nav-link">
+            <Link to="/dresses" className="mobile-nav-link" onClick={() => setMobileMenuOpen(false)}>
               <i className="ri-grid-line"></i>
               Collection
-            </button>
-            <button onClick={() => scrollToSection("process")} className="mobile-nav-link">
-              <i className="ri-repeat-line"></i>
-              Process
-            </button>
+            </Link>
+            {/* ADDED: AI Recommendation in mobile menu */}
+            <Link to="/ai-recommendation" className="mobile-nav-link" onClick={() => setMobileMenuOpen(false)}>
+              <i className="ri-robot-line"></i>
+              AI Recommendation
+            </Link>
+            {/* ADDED: Virtual Try-On in mobile menu */}
+            <Link to="/virtual-tryon" className="mobile-nav-link" onClick={() => setMobileMenuOpen(false)}>
+              <i className="ri-camera-line"></i>
+              Virtual Try-On
+            </Link>
             <button onClick={() => scrollToSection("faq")} className="mobile-nav-link">
               <i className="ri-question-line"></i>
               FAQ
@@ -112,23 +124,29 @@ const Navbar = () => {
         ) : (
           // On other pages - use router links
           <>
-            <Link to="/" className="mobile-nav-link">
+            <Link to="/" className="mobile-nav-link" onClick={() => setMobileMenuOpen(false)}>
               <i className="ri-home-line"></i>
               Home
             </Link>
-            <Link to="/dresses" className="mobile-nav-link">
+            <Link to="/dresses" className="mobile-nav-link" onClick={() => setMobileMenuOpen(false)}>
               <i className="ri-grid-line"></i>
               Collection
             </Link>
-            <Link to="/process" className="mobile-nav-link">
-              <i className="ri-repeat-line"></i>
-              Process
+            {/* ADDED: AI Recommendation in mobile menu */}
+            <Link to="/ai-recommendation" className="mobile-nav-link" onClick={() => setMobileMenuOpen(false)}>
+              <i className="ri-robot-line"></i>
+              AI Recommendation
             </Link>
-            <Link to="/faq" className="mobile-nav-link">
+            {/* ADDED: Virtual Try-On in mobile menu */}
+            <Link to="/virtual-tryon" className="mobile-nav-link" onClick={() => setMobileMenuOpen(false)}>
+              <i className="ri-camera-line"></i>
+              Virtual Try-On
+            </Link>
+            <Link to="/faq" className="mobile-nav-link" onClick={() => setMobileMenuOpen(false)}>
               <i className="ri-question-line"></i>
               FAQ
             </Link>
-            <Link to="/contact" className="mobile-nav-link">
+            <Link to="/contact" className="mobile-nav-link" onClick={() => setMobileMenuOpen(false)}>
               <i className="ri-customer-service-line"></i>
               Contact
             </Link>
@@ -136,7 +154,7 @@ const Navbar = () => {
         )}
         
         {/* Mobile Book Now Button */}
-        <Link to="/book" className="mobile-book-btn">
+        <Link to="/dresses" className="mobile-book-btn" onClick={() => setMobileMenuOpen(false)}>
           <span>Book Now</span>
           <i className="ri-arrow-right-line"></i>
         </Link>
