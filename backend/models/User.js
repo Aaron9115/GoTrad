@@ -19,6 +19,23 @@ const userSchema = new mongoose.Schema(
       type: String,
       enum: ["owner", "renter", "admin"],
       default: "renter"
+    },
+    // New fields for profile - ADD THESE
+    phone: {
+      type: String,
+      default: ""
+    },
+    address: {
+      type: String,
+      default: ""
+    },
+    bio: {
+      type: String,
+      default: ""
+    },
+    profileImage: {
+      type: String,
+      default: "https://via.placeholder.com/150"
     }
   },
   { timestamps: true }
