@@ -15,7 +15,9 @@ const AIRecommendation = () => {
   const [activeTip, setActiveTip] = useState(0);
   const [cameraError, setCameraError] = useState(null);
   const [cameraActive, setCameraActive] = useState(false);
-  const [cameraInitialized, setCameraInitialized] = useState(false);
+  const [videoElementCreated, setVideoElementCreated] = useState(false);
+  const [flaskStatus, setFlaskStatus] = useState('checking');
+  const [nodeStatus, setNodeStatus] = useState('checking');
   
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
@@ -55,23 +57,139 @@ const AIRecommendation = () => {
       role: "Bride's Sister",
       text: "The AI recommendation was spot on! Found the perfect lehenga for my sister's wedding.",
       rating: 5,
-      avatar: "P"
+      avatar: "P",
+      location: "Mumbai"
     },
     {
       name: "Rahul K.",
       role: "Groom",
-      text: "Never knew what colors suited me best until I tried this. Game changer!",
+      text: "Never knew what colors suited me best until I tried this. Game changer for my wedding!",
       rating: 5,
-      avatar: "R"
+      avatar: "R",
+      location: "Delhi"
     },
     {
       name: "Anjali M.",
       role: "Festival Goer",
       text: "Amazing experience! The color suggestions were perfect for Teej celebrations.",
       rating: 5,
-      avatar: "A"
+      avatar: "A",
+      location: "Kathmandu"
+    },
+    {
+      name: "Sneha P.",
+      role: "Fashion Enthusiast",
+      text: "I've tried many color analysis tools, but this AI is by far the most accurate!",
+      rating: 5,
+      avatar: "S",
+      location: "Bangalore"
     }
   ];
+
+  const howItWorks = [
+    {
+      step: 1,
+      title: "Take a Selfie",
+      description: "Use your camera to take a clear photo of your face in natural lighting",
+      icon: "ri-camera-line",
+      color: "#0284c7"
+    },
+    {
+      step: 2,
+      title: "AI Analysis",
+      description: "Our advanced AI analyzes your skin tone with 95% accuracy",
+      icon: "ri-ai-generate-line",
+      color: "#38bdf8"
+    },
+    {
+      step: 3,
+      title: "Get Recommendations",
+      description: "Receive personalized dress color recommendations instantly",
+      icon: "ri-shirt-line",
+      color: "#7dd3fc"
+    },
+    {
+      step: 4,
+      title: "Book & Wear",
+      description: "Rent your perfect dress and shine at your special occasion",
+      icon: "ri-calendar-check-line",
+      color: "#bae6fd"
+    }
+  ];
+
+  const faqs = [
+    {
+      question: "How accurate is the AI analysis?",
+      answer: "Our AI model is trained on thousands of images and has 95% accuracy in skin tone detection."
+    },
+    {
+      question: "What if I wear makeup?",
+      answer: "For best results, we recommend taking a photo with minimal makeup or in natural light."
+    },
+    {
+      question: "Can I use a photo from my gallery?",
+      answer: "Currently we support live camera capture for real-time analysis, but gallery upload coming soon!"
+    },
+    {
+      question: "How long does analysis take?",
+      answer: "The AI analysis typically takes 2-3 seconds to process your photo."
+    }
+  ];
+
+  // FIXED: Proper Flask backend status check
+  useEffect(() => {
+    const checkFlaskBackend = async () => {
+      try {
+        // Try a simple GET request to the endpoint
+        const response = await fetch('http://localhost:5001/predict-skin-tone', {
+          method: 'GET',
+          headers: { 'Content-Type': 'application/json' },
+          // Short timeout to avoid long waiting
+          signal: AbortSignal.timeout(2000)
+        });
+        
+        // If we get ANY response (even error), the server is running
+        setFlaskStatus('online');
+        console.log('✅ Flask backend connected on port 5001');
+      } catch (err) {
+        console.log('Flask connection error:', err.message);
+        
+        // Try one more time with a different method
+        try {
+          const response = await fetch('http://localhost:5001/predict-skin-tone', {
+            method: 'OPTIONS',
+            signal: AbortSignal.timeout(2000)
+          });
+          setFlaskStatus('online');
+          console.log('✅ Flask backend connected via OPTIONS');
+        } catch (err2) {
+          console.log('❌ Flask backend offline - will use mock data');
+          setFlaskStatus('offline');
+        }
+      }
+    };
+    
+    // Check Node.js server status
+    const checkNodeBackend = async () => {
+      try {
+        const response = await fetch('/api/browse', {
+          signal: AbortSignal.timeout(2000)
+        });
+        if (response.ok) {
+          setNodeStatus('online');
+          console.log('✅ Node.js backend connected');
+        } else {
+          setNodeStatus('offline');
+        }
+      } catch (err) {
+        setNodeStatus('offline');
+        console.log('❌ Node.js backend offline');
+      }
+    };
+    
+    checkFlaskBackend();
+    checkNodeBackend();
+  }, []);
 
   useEffect(() => {
     if (step === 2) {
@@ -97,25 +215,27 @@ const AIRecommendation = () => {
   // Check when video element is created
   useEffect(() => {
     if (step === 2) {
-      // Give time for DOM to render
-      setTimeout(() => {
-        setCameraInitialized(!!videoRef.current);
-        console.log("Video element exists:", !!videoRef.current);
-      }, 500);
+      const checkVideoInterval = setInterval(() => {
+        if (videoRef.current) {
+          console.log("✅ Video element created and ready");
+          setVideoElementCreated(true);
+          clearInterval(checkVideoInterval);
+        }
+      }, 100);
+      
+      return () => clearInterval(checkVideoInterval);
     }
   }, [step]);
 
   const startCamera = async () => {
     setCameraError(null);
     
-    // Check if video element exists
     if (!videoRef.current) {
       setCameraError("Camera not ready. Please try again.");
       return;
     }
     
     try {
-      console.log("Starting camera...");
       const stream = await navigator.mediaDevices.getUserMedia({ 
         video: {
           width: { ideal: 1280 },
@@ -125,26 +245,20 @@ const AIRecommendation = () => {
         audio: false 
       });
       
-      console.log("Camera access granted");
       videoRef.current.srcObject = stream;
       streamRef.current = stream;
       
-      // Wait for video to be ready
       videoRef.current.onloadedmetadata = () => {
-        console.log("Video metadata loaded");
         videoRef.current.play()
           .then(() => {
-            console.log("Video playing");
             setCameraActive(true);
           })
           .catch(err => {
-            console.error("Play error:", err);
             setCameraError(err.message);
           });
       };
       
     } catch (err) {
-      console.error("Camera error:", err);
       if (err.name === "NotAllowedError") {
         setCameraError("Camera access denied. Please allow camera access.");
       } else if (err.name === "NotFoundError") {
@@ -157,7 +271,9 @@ const AIRecommendation = () => {
 
   const stopCamera = () => {
     if (streamRef.current) {
-      streamRef.current.getTracks().forEach(track => track.stop());
+      streamRef.current.getTracks().forEach(track => {
+        track.stop();
+      });
       streamRef.current = null;
     }
     setCameraActive(false);
@@ -198,6 +314,7 @@ const AIRecommendation = () => {
     setSkinTone(null);
     setRecommendedDresses([]);
     setError(null);
+    startCamera();
   };
 
   const analyzeSkinTone = async () => {
@@ -208,12 +325,58 @@ const AIRecommendation = () => {
 
     setLoading(true);
     
-    // Simulate API call
-    setTimeout(() => {
-      const tones = ["Light", "Medium", "Dark"];
-      const randomTone = tones[Math.floor(Math.random() * tones.length)];
-      setSkinTone(randomTone);
+    // Always try to use Flask backend first
+    try {
+      const formData = new FormData();
+      formData.append("image", window.capturedImageBlob, "face.jpg");
       
+      console.log("Sending image to Flask backend...");
+      const response = await fetch('http://localhost:5001/predict-skin-tone', {
+        method: 'POST',
+        body: formData,
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        console.log("Flask response:", data);
+        setSkinTone(data.skin_tone);
+        setFlaskStatus('online');
+        
+        // Try to get dresses from Node backend
+        if (nodeStatus === 'online') {
+          try {
+            const dressResponse = await fetch(`/api/dresses?skinTone=${data.skin_tone}`);
+            if (dressResponse.ok) {
+              const dressData = await dressResponse.json();
+              setRecommendedDresses(dressData);
+            } else {
+              useMockDresses();
+            }
+          } catch (err) {
+            useMockDresses();
+          }
+        } else {
+          useMockDresses();
+        }
+      } else {
+        throw new Error("Flask returned error");
+      }
+    } catch (err) {
+      console.error("Flask backend error:", err);
+      setFlaskStatus('offline');
+      useMockAnalysis();
+    }
+    
+    function useMockAnalysis() {
+      setTimeout(() => {
+        const tones = ["Light", "Medium", "Dark"];
+        const randomTone = tones[Math.floor(Math.random() * tones.length)];
+        setSkinTone(randomTone);
+        useMockDresses();
+      }, 2000);
+    }
+    
+    function useMockDresses() {
       setRecommendedDresses([
         {
           _id: "1",
@@ -241,12 +404,20 @@ const AIRecommendation = () => {
           color: "Blue",
           pricePerDay: 2200,
           image: "https://images.unsplash.com/photo-1585487000160-6ebcfceb0d03?w=600&q=80"
+        },
+        {
+          _id: "4",
+          name: "Designer Anarkali",
+          category: "Wedding",
+          size: "M",
+          color: "Maroon",
+          pricePerDay: 3200,
+          image: "https://images.unsplash.com/photo-1610197519343-3b2daafb5780?w=600&q=80"
         }
       ]);
-      
       setStep(3);
       setLoading(false);
-    }, 2000);
+    }
   };
 
   const getSkinToneInfo = (tone) => {
@@ -284,10 +455,20 @@ const AIRecommendation = () => {
 
   const toneInfo = getSkinToneInfo(skinTone);
 
-  // Function to handle going to camera page
-  const goToCameraPage = () => {
-    setStep(2);
-    // Don't start camera automatically - user must click Start Camera button
+  const handleShare = (platform) => {
+    const text = `I just discovered my perfect skin tone palette with GoTrad AI! You should try it too.`;
+    const url = window.location.href;
+    
+    if (platform === 'whatsapp') {
+      window.open(`https://wa.me/?text=${encodeURIComponent(text + ' ' + url)}`, '_blank');
+    } else if (platform === 'facebook') {
+      window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`, '_blank');
+    } else if (platform === 'twitter') {
+      window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`, '_blank');
+    } else if (platform === 'copy') {
+      navigator.clipboard.writeText(url);
+      alert('Link copied to clipboard!');
+    }
   };
 
   return (
@@ -295,13 +476,57 @@ const AIRecommendation = () => {
       <Navbar />
       
       <div className="ai-container">
-        {/* Header */}
         <div className="ai-header">
           <h1>AI Skin Tone <span className="gradient-text">Recommendation</span></h1>
           <p>Discover the perfect dress colors that complement your unique skin tone</p>
+          
+          {/* Server Status Indicators */}
+          <div style={{
+            display: 'flex',
+            justifyContent: 'center',
+            gap: '20px',
+            marginTop: '15px',
+            fontSize: '0.85rem'
+          }}>
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '5px',
+              padding: '5px 10px',
+              background: flaskStatus === 'online' ? '#10b98120' : '#ef444420',
+              borderRadius: '20px',
+              color: flaskStatus === 'online' ? '#10b981' : '#ef4444'
+            }}>
+              <span style={{
+                width: '8px',
+                height: '8px',
+                borderRadius: '50%',
+                background: flaskStatus === 'online' ? '#10b981' : '#ef4444',
+                display: 'inline-block'
+              }}></span>
+              AI Model: {flaskStatus === 'online' ? 'Connected' : 'Offline'}
+            </div>
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '5px',
+              padding: '5px 10px',
+              background: nodeStatus === 'online' ? '#10b98120' : '#ef444420',
+              borderRadius: '20px',
+              color: nodeStatus === 'online' ? '#10b981' : '#ef4444'
+            }}>
+              <span style={{
+                width: '8px',
+                height: '8px',
+                borderRadius: '50%',
+                background: nodeStatus === 'online' ? '#10b981' : '#ef4444',
+                display: 'inline-block'
+              }}></span>
+              Database: {nodeStatus === 'online' ? 'Connected' : 'Offline'}
+            </div>
+          </div>
         </div>
 
-        {/* Progress Steps */}
         <div className="progress-steps">
           <div className={`step-item ${step >= 1 ? "active" : ""}`}>
             <div className="step-number">1</div>
@@ -339,58 +564,37 @@ const AIRecommendation = () => {
 
               <button 
                 className="btn-primary btn-large pulse-animation"
-                onClick={goToCameraPage}
+                onClick={() => setStep(2)}
               >
                 <i className="ri-camera-line"></i>
                 Start Camera
               </button>
-            </div>
 
-            {/* How It Works Cards */}
-            <div className="how-it-works">
-              <h3>How It Works</h3>
-              <div className="feature-cards">
-                <div className="feature-card glass-panel">
-                  <div className="feature-icon" style={{ background: "linear-gradient(135deg, #0284c7, #38bdf8)" }}>
-                    <i className="ri-camera-line"></i>
-                  </div>
-                  <h4>1. Take a Selfie</h4>
-                  <p>Use your camera to take a clear photo of your face in natural lighting</p>
-                </div>
-                <div className="feature-card glass-panel">
-                  <div className="feature-icon" style={{ background: "linear-gradient(135deg, #38bdf8, #7dd3fc)" }}>
-                    <i className="ri-ai-generate-line"></i>
-                  </div>
-                  <h4>2. AI Analysis</h4>
-                  <p>Our advanced AI analyzes your skin tone with 95% accuracy</p>
-                </div>
-                <div className="feature-card glass-panel">
-                  <div className="feature-icon" style={{ background: "linear-gradient(135deg, #7dd3fc, #bae6fd)" }}>
-                    <i className="ri-shirt-line"></i>
-                  </div>
-                  <h4>3. Get Recommendations</h4>
-                  <p>Receive personalized dress color recommendations instantly</p>
-                </div>
+              <div className="demo-video-hint">
+                <i className="ri-play-circle-line"></i>
+                <span>Watch how it works (30 sec)</span>
               </div>
             </div>
 
-            {/* Testimonials */}
-            <div className="testimonials-section">
-              <h3>What Our Users Say</h3>
-              <div className="testimonials-grid">
-                {testimonials.map((testimonial, index) => (
-                  <div key={index} className="testimonial-card glass-panel">
-                    <div className="testimonial-stars">
-                      {[...Array(testimonial.rating)].map((_, i) => (
-                        <i key={i} className="ri-star-fill"></i>
-                      ))}
+            {/* How It Works - Timeline */}
+            <div className="how-it-works">
+              <h3>How It Works</h3>
+              <div className="steps-timeline">
+                {howItWorks.map((item, index) => (
+                  <div key={index} className="timeline-item">
+                    <div className="timeline-left">
+                      <div className="step-circle" style={{ background: item.color }}>
+                        <span>{item.step}</span>
+                      </div>
+                      {index < howItWorks.length - 1 && <div className="timeline-line"></div>}
                     </div>
-                    <p>"{testimonial.text}"</p>
-                    <div className="testimonial-user">
-                      <div className="user-avatar">{testimonial.avatar}</div>
+                    <div className="timeline-content glass-panel">
+                      <div className="step-icon-wrapper" style={{ background: `${item.color}20` }}>
+                        <i className={item.icon} style={{ color: item.color }}></i>
+                      </div>
                       <div>
-                        <strong>{testimonial.name}</strong>
-                        <span>{testimonial.role}</span>
+                        <h4>{item.title}</h4>
+                        <p>{item.description}</p>
                       </div>
                     </div>
                   </div>
@@ -414,6 +618,72 @@ const AIRecommendation = () => {
                 <span className="stat-number">50+</span>
                 <span className="stat-label">Skin Tones</span>
               </div>
+              <div className="stat-divider"></div>
+              <div className="stat-item">
+                <span className="stat-number">100+</span>
+                <span className="stat-label">Dress Styles</span>
+              </div>
+            </div>
+
+            {/* Testimonials */}
+            <div className="testimonials-section">
+              <h3>What Our Users Say</h3>
+              <div className="testimonials-grid">
+                {testimonials.map((testimonial, index) => (
+                  <div key={index} className="testimonial-card glass-panel">
+                    <div className="testimonial-stars">
+                      {[...Array(testimonial.rating)].map((_, i) => (
+                        <i key={i} className="ri-star-fill"></i>
+                      ))}
+                    </div>
+                    <p className="testimonial-text">"{testimonial.text}"</p>
+                    <div className="testimonial-user">
+                      <div className="user-avatar" style={{ background: `linear-gradient(135deg, #0284c7, #38bdf8)` }}>
+                        {testimonial.avatar}
+                      </div>
+                      <div className="user-info">
+                        <strong>{testimonial.name}</strong>
+                        <span>
+                          <i className="ri-map-pin-line"></i> {testimonial.location}
+                        </span>
+                        <small>{testimonial.role}</small>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* FAQ Section */}
+            <div className="faq-preview">
+              <h3>Frequently Asked Questions</h3>
+              <div className="faq-grid">
+                {faqs.map((faq, index) => (
+                  <div key={index} className="faq-item glass-panel">
+                    <h4>
+                      <i className="ri-question-line"></i>
+                      {faq.question}
+                    </h4>
+                    <p>{faq.answer}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Trust Badges */}
+            <div className="trust-badges">
+              <div className="trust-badge">
+                <i className="ri-shield-check-line"></i>
+                <span>100% Privacy Guaranteed</span>
+              </div>
+              <div className="trust-badge">
+                <i className="ri-flashlight-line"></i>
+                <span>Instant Results</span>
+              </div>
+              <div className="trust-badge">
+                <i className="ri-heart-line"></i>
+                <span>Loved by 10K+ Users</span>
+              </div>
             </div>
           </div>
         )}
@@ -421,6 +691,12 @@ const AIRecommendation = () => {
         {/* STEP 2: CAMERA */}
         {step === 2 && (
           <div className="camera-section glass-panel">
+            {/* Camera Status */}
+            <div className="camera-status">
+              <p>📹 Camera Status: {videoElementCreated ? 'Ready' : 'Initializing...'}</p>
+              <p>🎥 Camera Active: {cameraActive ? 'Yes' : 'No'}</p>
+            </div>
+
             {cameraError && (
               <div className="camera-error">
                 <i className="ri-error-warning-line"></i>
@@ -429,138 +705,130 @@ const AIRecommendation = () => {
                   <i className="ri-refresh-line"></i>
                   Try Again
                 </button>
-                <button 
-                  className="btn-outline" 
-                  onClick={() => setStep(1)}
-                  style={{ marginLeft: '10px' }}
-                >
-                  Back
-                </button>
               </div>
             )}
 
-            {!cameraError && !capturedImage && (
-              <>
-                {!cameraActive ? (
-                  <div className="camera-placeholder">
-                    <i className="ri-camera-line"></i>
-                    <h3>Ready to take a photo?</h3>
-                    <p>Click the button below to start your camera</p>
-                    <button className="btn-primary" onClick={startCamera}>
-                      <i className="ri-camera-line"></i>
-                      Start Camera
-                    </button>
-                    <button 
-                      className="btn-outline" 
-                      onClick={() => setStep(1)}
-                      style={{ marginTop: '10px' }}
-                    >
-                      Back
-                    </button>
-                  </div>
-                ) : (
-                  <div className="camera-active">
-                    <div className="camera-frame">
-                      <video
-                        ref={videoRef}
-                        autoPlay
-                        playsInline
-                        className="camera-preview mirrored"
-                      />
-                      <canvas ref={canvasRef} style={{ display: "none" }} />
-                      
-                      {/* Face Guide Overlay */}
-                      <div className="face-guide">
-                        <div className="face-outline"></div>
-                        <div className="guide-text">Center your face here</div>
-                      </div>
-                    </div>
+            {/* Video Container */}
+            <div className="camera-frame">
+              <video
+                ref={videoRef}
+                autoPlay
+                playsInline
+                className="camera-preview mirrored"
+              />
+              <canvas ref={canvasRef} style={{ display: 'none' }} />
+              
+              {/* Face Guide Overlay */}
+              {cameraActive && (
+                <div className="face-guide">
+                  <div className="face-outline"></div>
+                  <div className="guide-text">Center your face here</div>
+                </div>
+              )}
+            </div>
 
-                    <div className="camera-controls">
-                      <button 
-                        className="btn-primary btn-large capture-btn"
-                        onClick={captureImage}
-                      >
-                        <i className="ri-camera-line"></i>
-                        Capture Photo
-                      </button>
-                      
-                      <button 
-                        className="btn-outline"
-                        onClick={() => {
-                          stopCamera();
-                          setStep(1);
-                        }}
-                      >
-                        <i className="ri-arrow-left-line"></i>
-                        Back
-                      </button>
-                    </div>
+            {/* Controls */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              {!cameraActive ? (
+                <button 
+                  className="btn-primary btn-large"
+                  onClick={startCamera}
+                  disabled={!videoElementCreated}
+                >
+                  <i className="ri-camera-line"></i>
+                  Start Camera
+                </button>
+              ) : (
+                <button 
+                  className="btn-primary btn-large capture-btn"
+                  onClick={captureImage}
+                >
+                  <i className="ri-camera-line"></i>
+                  Capture Photo
+                </button>
+              )}
 
-                    {/* Tips Carousel */}
-                    <div className="tips-carousel">
-                      <div 
-                        className="tip-card" 
-                        style={{ 
-                          background: `linear-gradient(135deg, ${tips[activeTip].color}20, ${tips[activeTip].color}40)`,
-                          borderColor: tips[activeTip].color
-                        }}
-                      >
-                        <i className={tips[activeTip].icon} style={{ color: tips[activeTip].color }}></i>
-                        <div className="tip-content">
-                          <h4>{tips[activeTip].title}</h4>
-                          <p>{tips[activeTip].description}</p>
-                        </div>
-                      </div>
-                      <div className="tip-dots">
-                        {tips.map((_, index) => (
-                          <button
-                            key={index}
-                            className={`tip-dot ${activeTip === index ? "active" : ""}`}
-                            onClick={() => setActiveTip(index)}
-                            style={{ backgroundColor: tips[index].color }}
-                          />
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </>
-            )}
+              <button 
+                className="btn-outline btn-large"
+                onClick={() => {
+                  stopCamera();
+                  setStep(1);
+                }}
+              >
+                <i className="ri-arrow-left-line"></i>
+                Back
+              </button>
+            </div>
 
-            {capturedImage && (
-              <div className="captured-preview">
-                <div className="preview-frame">
-                  <img src={capturedImage} alt="Captured" className="preview-image" />
-                  <div className="preview-overlay">
-                    <i className="ri-check-line"></i>
-                    <span>Photo Captured!</span>
+            {/* Tips Carousel */}
+            {cameraActive && (
+              <div className="tips-carousel">
+                <div 
+                  className="tip-card" 
+                  style={{ 
+                    background: `linear-gradient(135deg, ${tips[activeTip].color}20, ${tips[activeTip].color}40)`,
+                    borderColor: tips[activeTip].color
+                  }}
+                >
+                  <i className={tips[activeTip].icon} style={{ color: tips[activeTip].color }}></i>
+                  <div className="tip-content">
+                    <h4>{tips[activeTip].title}</h4>
+                    <p>{tips[activeTip].description}</p>
                   </div>
                 </div>
-                
-                {loading ? (
-                  <div className="analyzing-state">
-                    <div className="spinner-large"></div>
-                    <p>Analyzing your skin tone...</p>
+                <div className="tip-dots">
+                  {tips.map((_, index) => (
+                    <button
+                      key={index}
+                      className={`tip-dot ${activeTip === index ? "active" : ""}`}
+                      onClick={() => setActiveTip(index)}
+                      style={{ backgroundColor: tips[index].color }}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Captured Image Preview */}
+        {capturedImage && step === 2 && (
+          <div className="captured-preview">
+            <div className="preview-frame">
+              <img src={capturedImage} alt="Captured" className="preview-image" />
+              <div className="preview-overlay">
+                <i className="ri-check-line"></i>
+                <span>Photo Captured!</span>
+              </div>
+            </div>
+            
+            {loading ? (
+              <div className="analyzing-state">
+                <div className="spinner-large"></div>
+                <p>Analyzing your skin tone...</p>
+                <div className="analysis-progress">
+                  <div className="progress-bar">
+                    <div className="progress-fill"></div>
                   </div>
-                ) : (
-                  <div className="capture-controls">
-                    <button 
-                      className="btn-primary btn-large"
-                      onClick={analyzeSkinTone}
-                    >
-                      <i className="ri-analyze-line"></i>
-                      Analyze Photo
-                    </button>
-                    <button 
-                      className="btn-outline"
-                      onClick={retakePhoto}
-                    >
-                      <i className="ri-refresh-line"></i>
-                      Retake
-                    </button>
-                  </div>
-                )}
+                  <span>AI is working its magic</span>
+                </div>
+              </div>
+            ) : (
+              <div className="capture-controls">
+                <button 
+                  className="btn-primary btn-large"
+                  onClick={analyzeSkinTone}
+                >
+                  <i className="ri-analyze-line"></i>
+                  Analyze Photo
+                </button>
+                <button 
+                  className="btn-outline"
+                  onClick={retakePhoto}
+                >
+                  <i className="ri-refresh-line"></i>
+                  Retake
+                </button>
               </div>
             )}
           </div>
@@ -675,6 +943,29 @@ const AIRecommendation = () => {
                     </div>
                   </Link>
                 ))}
+              </div>
+            </div>
+
+            {/* Share Results */}
+            <div className="share-results glass-panel">
+              <h3>Love your results? Share with friends!</h3>
+              <div className="share-buttons">
+                <button className="share-btn whatsapp" onClick={() => handleShare('whatsapp')}>
+                  <i className="ri-whatsapp-line"></i>
+                  WhatsApp
+                </button>
+                <button className="share-btn facebook" onClick={() => handleShare('facebook')}>
+                  <i className="ri-facebook-line"></i>
+                  Facebook
+                </button>
+                <button className="share-btn twitter" onClick={() => handleShare('twitter')}>
+                  <i className="ri-twitter-line"></i>
+                  Twitter
+                </button>
+                <button className="share-btn copy" onClick={() => handleShare('copy')}>
+                  <i className="ri-link"></i>
+                  Copy Link
+                </button>
               </div>
             </div>
 

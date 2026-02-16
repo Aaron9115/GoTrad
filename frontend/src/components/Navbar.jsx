@@ -1,11 +1,22 @@
 import React, { useState, useEffect } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import "./Navbar.css";
 
 const Navbar = () => {
   const [scrolled, setScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [user, setUser] = useState(null);
+  const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
+
+  // Check for logged in user
+  useEffect(() => {
+    const userData = localStorage.getItem("user");
+    if (userData) {
+      setUser(JSON.parse(userData));
+    }
+  }, [location]);
 
   // Navbar scroll effect
   useEffect(() => {
@@ -19,6 +30,7 @@ const Navbar = () => {
   // Close mobile menu when route changes
   useEffect(() => {
     setMobileMenuOpen(false);
+    setProfileMenuOpen(false);
   }, [location]);
 
   // Smooth scroll to section (for home page anchors)
@@ -36,12 +48,32 @@ const Navbar = () => {
     }
   };
 
+  // Handle logout
+  const handleLogout = () => {
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+    setUser(null);
+    navigate("/");
+  };
+
+  // Get dashboard link based on role
+  const getDashboardLink = () => {
+    if (!user) return "/";
+    switch (user.role) {
+      case "admin":
+        return "/admin/dashboard";
+      case "owner":
+        return "/owner/dresses";
+      default:
+        return "/profile";
+    }
+  };
+
   return (
     <nav className={`navbar ${scrolled ? "scrolled" : ""}`}>
       <div className="nav-container">
         {/* Logo */}
         <Link to="/" className="logo">
-          
           <span>GoTrad</span>
         </Link>
 
@@ -52,9 +84,7 @@ const Navbar = () => {
             <>
               <button onClick={() => scrollToSection("hero")} className="nav-link">Home</button>
               <Link to="/dresses" className="nav-link">Collection</Link>
-              {/* ADDED: AI Recommendation link */}
               <Link to="/ai-recommendation" className="nav-link">AI Recommendation</Link>
-              {/* ADDED: Virtual Try-On link */}
               <Link to="/virtual-tryon" className="nav-link">Virtual Try-On</Link>
               <button onClick={() => scrollToSection("faq")} className="nav-link">FAQ</button>
               <button onClick={() => scrollToSection("contact")} className="nav-link">Contact</button>
@@ -64,9 +94,7 @@ const Navbar = () => {
             <>
               <Link to="/" className="nav-link">Home</Link>
               <Link to="/dresses" className="nav-link">Collection</Link>
-              {/* ADDED: AI Recommendation link */}
               <Link to="/ai-recommendation" className="nav-link">AI Recommendation</Link>
-              {/* ADDED: Virtual Try-On link */}
               <Link to="/virtual-tryon" className="nav-link">Virtual Try-On</Link>
               <Link to="/faq" className="nav-link">FAQ</Link>
               <Link to="/contact" className="nav-link">Contact</Link>
@@ -74,19 +102,74 @@ const Navbar = () => {
           )}
         </div>
 
-        {/* Book Now Button */}
-        <Link to="/dresses" className="btn-book">
-          <span>Book Now</span>
-          <i className="ri-arrow-right-line"></i>
-        </Link>
+        {/* Right Side - Auth/Profile */}
+        <div className="nav-right">
+          {user ? (
+            // Logged in - Show Profile
+            <div className="profile-dropdown">
+              <button 
+                className="profile-btn"
+                onClick={() => setProfileMenuOpen(!profileMenuOpen)}
+              >
+                <div className="profile-avatar">
+                  {user.name?.charAt(0).toUpperCase()}
+                </div>
+                <span className="profile-name">{user.name?.split(' ')[0]}</span>
+                <i className={`ri-arrow-down-s-line ${profileMenuOpen ? 'rotate' : ''}`}></i>
+              </button>
 
-        {/* Mobile Menu Button */}
-        <button 
-          className="mobile-menu-btn"
-          onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-        >
-          <i className={mobileMenuOpen ? "ri-close-line" : "ri-menu-line"}></i>
-        </button>
+              {profileMenuOpen && (
+                <div className="dropdown-menu">
+                  <Link to={getDashboardLink()} className="dropdown-item">
+                    <i className="ri-dashboard-line"></i>
+                    Dashboard
+                  </Link>
+                  <Link to="/profile" className="dropdown-item">
+                    <i className="ri-user-line"></i>
+                    My Profile
+                  </Link>
+                  {user.role === 'renter' && (
+                    <Link to="/my-bookings" className="dropdown-item">
+                      <i className="ri-calendar-line"></i>
+                      My Bookings
+                    </Link>
+                  )}
+                  {user.role === 'owner' && (
+                    <Link to="/owner/dresses" className="dropdown-item">
+                      <i className="ri-store-line"></i>
+                      My Dresses
+                    </Link>
+                  )}
+                  <div className="dropdown-divider"></div>
+                  <button onClick={handleLogout} className="dropdown-item logout">
+                    <i className="ri-logout-box-line"></i>
+                    Logout
+                  </button>
+                </div>
+              )}
+            </div>
+          ) : (
+            // Not logged in - Show Login/Signup
+            <div className="auth-buttons">
+              <Link to="/login" className="btn-outline-small">Login</Link>
+              <Link to="/register" className="btn-primary-small">Sign Up</Link>
+            </div>
+          )}
+
+          {/* Book Now Button */}
+          <Link to="/dresses" className="btn-book">
+            <span>Book Now</span>
+            <i className="ri-arrow-right-line"></i>
+          </Link>
+
+          {/* Mobile Menu Button */}
+          <button 
+            className="mobile-menu-btn"
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+          >
+            <i className={mobileMenuOpen ? "ri-close-line" : "ri-menu-line"}></i>
+          </button>
+        </div>
       </div>
 
       {/* Mobile Navigation Menu */}
@@ -102,12 +185,10 @@ const Navbar = () => {
               <i className="ri-grid-line"></i>
               Collection
             </Link>
-            {/* ADDED: AI Recommendation in mobile menu */}
             <Link to="/ai-recommendation" className="mobile-nav-link" onClick={() => setMobileMenuOpen(false)}>
               <i className="ri-robot-line"></i>
               AI Recommendation
             </Link>
-            {/* ADDED: Virtual Try-On in mobile menu */}
             <Link to="/virtual-tryon" className="mobile-nav-link" onClick={() => setMobileMenuOpen(false)}>
               <i className="ri-camera-line"></i>
               Virtual Try-On
@@ -132,12 +213,10 @@ const Navbar = () => {
               <i className="ri-grid-line"></i>
               Collection
             </Link>
-            {/* ADDED: AI Recommendation in mobile menu */}
             <Link to="/ai-recommendation" className="mobile-nav-link" onClick={() => setMobileMenuOpen(false)}>
               <i className="ri-robot-line"></i>
               AI Recommendation
             </Link>
-            {/* ADDED: Virtual Try-On in mobile menu */}
             <Link to="/virtual-tryon" className="mobile-nav-link" onClick={() => setMobileMenuOpen(false)}>
               <i className="ri-camera-line"></i>
               Virtual Try-On
@@ -152,7 +231,59 @@ const Navbar = () => {
             </Link>
           </>
         )}
-        
+
+        {/* Mobile Auth Section */}
+        {!user ? (
+          <>
+            <div className="mobile-auth">
+              <Link to="/login" className="mobile-login" onClick={() => setMobileMenuOpen(false)}>
+                <i className="ri-login-circle-line"></i>
+                Login
+              </Link>
+              <Link to="/register" className="mobile-signup" onClick={() => setMobileMenuOpen(false)}>
+                <i className="ri-user-add-line"></i>
+                Sign Up
+              </Link>
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="mobile-user">
+              <div className="mobile-user-avatar">
+                {user.name?.charAt(0).toUpperCase()}
+              </div>
+              <div className="mobile-user-info">
+                <strong>{user.name}</strong>
+                <span>{user.email}</span>
+              </div>
+            </div>
+            <Link to={getDashboardLink()} className="mobile-nav-link" onClick={() => setMobileMenuOpen(false)}>
+              <i className="ri-dashboard-line"></i>
+              Dashboard
+            </Link>
+            <Link to="/profile" className="mobile-nav-link" onClick={() => setMobileMenuOpen(false)}>
+              <i className="ri-user-line"></i>
+              My Profile
+            </Link>
+            {user.role === 'renter' && (
+              <Link to="/my-bookings" className="mobile-nav-link" onClick={() => setMobileMenuOpen(false)}>
+                <i className="ri-calendar-line"></i>
+                My Bookings
+              </Link>
+            )}
+            {user.role === 'owner' && (
+              <Link to="/owner/dresses" className="mobile-nav-link" onClick={() => setMobileMenuOpen(false)}>
+                <i className="ri-store-line"></i>
+                My Dresses
+              </Link>
+            )}
+            <button onClick={handleLogout} className="mobile-nav-link logout">
+              <i className="ri-logout-box-line"></i>
+              Logout
+            </button>
+          </>
+        )}
+
         {/* Mobile Book Now Button */}
         <Link to="/dresses" className="mobile-book-btn" onClick={() => setMobileMenuOpen(false)}>
           <span>Book Now</span>
