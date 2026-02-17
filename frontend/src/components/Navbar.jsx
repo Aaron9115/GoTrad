@@ -33,11 +33,11 @@ const Navbar = () => {
     setProfileMenuOpen(false);
   }, [location]);
 
-  // Smooth scroll to section (for home page anchors)
+  // Smooth scroll to section (for home page anchors only)
   const scrollToSection = (id) => {
     if (location.pathname !== "/") {
       // If not on home page, navigate to home with hash
-      window.location.href = `/#${id}`;
+      navigate(`/#${id}`);
       return;
     }
     
@@ -87,7 +87,8 @@ const Navbar = () => {
               <Link to="/ai-recommendation" className="nav-link">AI Recommendation</Link>
               <Link to="/virtual-tryon" className="nav-link">Virtual Try-On</Link>
               <button onClick={() => scrollToSection("faq")} className="nav-link">FAQ</button>
-              <button onClick={() => scrollToSection("contact")} className="nav-link">Contact</button>
+          
+              <Link to="/contact" className="nav-link">Contact</Link>
             </>
           ) : (
             // On other pages - use router links
@@ -197,10 +198,11 @@ const Navbar = () => {
               <i className="ri-question-line"></i>
               FAQ
             </button>
-            <button onClick={() => scrollToSection("contact")} className="mobile-nav-link">
+            {/* FIXED: Contact now links to page, not scroll */}
+            <Link to="/contact" className="mobile-nav-link" onClick={() => setMobileMenuOpen(false)}>
               <i className="ri-customer-service-line"></i>
               Contact
-            </button>
+            </Link>
           </>
         ) : (
           // On other pages - use router links

@@ -4,6 +4,7 @@ import Home from "./pages/Home";
 import DressListing from "./pages/DressListing";
 import Booking from "./pages/Booking";
 import AIRecommendation from "./pages/AIRecommendation";
+import Contact from "./pages/Contact"; // Make sure this import is here
 import Login from "./components/Login"; 
 import Register from "./components/Register";
 import Profile from "./pages/Profile";
@@ -36,9 +37,10 @@ function App() {
         <Route path="/dresses" element={<DressListing />} />
         <Route path="/booking/:dressId" element={<Booking />} />
         <Route path="/ai-recommendation" element={<AIRecommendation />} />
+        <Route path="/contact" element={<Contact />} /> {/* This route is correct */}
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
-
+        
         {/* Protected Routes */}
         <Route path="/profile" element={
           <ProtectedRoute>

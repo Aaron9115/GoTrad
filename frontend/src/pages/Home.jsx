@@ -1,65 +1,16 @@
-import React, { useEffect } from "react";
+import React from "react";
 import { Link } from "react-router-dom";
-import Navbar from "../components/Navbar";  // ✅ Correct
-import Footer from "../components/Footer";  // ✅ Correct
+import Navbar from "../components/Navbar";
+import Footer from "../components/Footer";
 import "./Home.css";
 
 export default function Home() {
-  useEffect(() => {
-    // FAQ Accordion functionality
-    const faqItems = document.querySelectorAll('.faq-item');
-    
-    const handleFaqClick = (e) => {
-      const button = e.currentTarget;
-      const faqItem = button.closest('.faq-item');
-      faqItem.classList.toggle('active');
-    };
-
-    document.querySelectorAll('.faq-question').forEach(button => {
-      button.addEventListener('click', handleFaqClick);
-    });
-
-    // Hover video simulation
-    const dressCards = document.querySelectorAll('.dress-card');
-    dressCards.forEach(card => {
-      const img = card.querySelector('.card-img');
-      const video = card.querySelector('.card-video');
-      const indicator = card.querySelector('.playing-indicator');
-      
-      if (video) {
-        card.addEventListener('mouseenter', () => {
-          if (indicator) indicator.style.opacity = '1';
-        });
-        
-        card.addEventListener('mouseleave', () => {
-          if (indicator) indicator.style.opacity = '0';
-        });
-      }
-    });
-
-    // Filter buttons
-    const filterBtns = document.querySelectorAll('.filter-btn');
-    filterBtns.forEach(btn => {
-      btn.addEventListener('click', () => {
-        filterBtns.forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-      });
-    });
-
-    // Cleanup
-    return () => {
-      document.querySelectorAll('.faq-question').forEach(button => {
-        button.removeEventListener('click', handleFaqClick);
-      });
-    };
-  }, []);
-
   return (
     <div className="home">
       {/* Reusable Navbar */}
       <Navbar />
 
-      {/* 🌟 HERO SECTION */}
+      {/* HERO SECTION */}
       <section id="hero" className="hero">
         <div className="hero-bg-overlay"></div>
         <div className="hero-content glass-panel">
@@ -102,7 +53,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* 💎 ABOUT SECTION */}
+      {/* ABOUT SECTION */}
       <section id="about" className="section">
         <div className="container">
           <div className="section-header">
@@ -142,12 +93,12 @@ export default function Home() {
         </div>
       </section>
 
-      {/* 👗 DRESS COLLECTION */}
+      {/* DRESS COLLECTION */}
       <section id="collection" className="section bg-white-soft">
         <div className="container">
           <div className="section-header">
             <h2>Our <span className="gradient-text">Collection</span></h2>
-            <p className="section-sub">Hover over any dress to see it in motion</p>
+            <p className="section-sub">Browse our traditional dresses</p>
           </div>
           
           <div className="filter-tabs">
@@ -160,165 +111,111 @@ export default function Home() {
           <div className="dress-grid">
             {/* Card 1 */}
             <div className="dress-card glass-panel">
-              <div className="card-badge">✨ Top rated</div>
+              <div className="card-badge">Top rated</div>
               <div className="media-wrapper">
                 <img 
                   src="https://images.unsplash.com/photo-1583391733956-3750e0ff4e8b?w=500&q=80" 
                   alt="Banarasi Saree" 
                   className="card-img" 
                 />
-                <video className="card-video" loop muted playsInline>
-                  <source src="#" type="video/mp4" />
-                </video>
-                <div className="playing-indicator">
-                  <span className="live-dot"></span>
-                  <span className="live-text">Playing</span>
-                </div>
-                <button className="quick-view-btn">
-                  <i className="ri-eye-line"></i>
-                </button>
                 <div className="card-info">
                   <span className="dress-type">Saree</span>
                   <h4 className="dress-name">Banarasi Silk</h4>
                   <span className="dress-price">$29<span>/day</span></span>
                 </div>
               </div>
+              <Link to="/booking/1" className="rent-btn-card">Rent Now</Link>
             </div>
             {/* Card 2 */}
             <div className="dress-card glass-panel">
-              <div className="card-badge">🌸 Festival</div>
+              <div className="card-badge">Festival</div>
               <div className="media-wrapper">
                 <img 
                   src="https://images.unsplash.com/photo-1617128077837-60a09f9596ae?w=500&q=80" 
                   alt="Silk Kurta" 
                   className="card-img" 
                 />
-                <video className="card-video" loop muted playsInline>
-                  <source src="#" type="video/mp4" />
-                </video>
-                <div className="playing-indicator">
-                  <span className="live-dot"></span>
-                  <span className="live-text">Playing</span>
-                </div>
-                <button className="quick-view-btn">
-                  <i className="ri-eye-line"></i>
-                </button>
                 <div className="card-info">
                   <span className="dress-type">Kurta</span>
                   <h4 className="dress-name">Silk Kurta Set</h4>
                   <span className="dress-price">$18<span>/day</span></span>
                 </div>
               </div>
+              <Link to="/booking/2" className="rent-btn-card">Rent Now</Link>
             </div>
             {/* Card 3 */}
             <div className="dress-card glass-panel">
-              <div className="card-badge">👑 Bridal</div>
+              <div className="card-badge">Bridal</div>
               <div className="media-wrapper">
                 <img 
                   src="https://images.unsplash.com/photo-1588357716680-17909c80b91d?w=500&q=80" 
                   alt="Lehenga Choli" 
                   className="card-img" 
                 />
-                <video className="card-video" loop muted playsInline>
-                  <source src="#" type="video/mp4" />
-                </video>
-                <div className="playing-indicator">
-                  <span className="live-dot"></span>
-                  <span className="live-text">Playing</span>
-                </div>
-                <button className="quick-view-btn">
-                  <i className="ri-eye-line"></i>
-                </button>
                 <div className="card-info">
                   <span className="dress-type">Lehenga</span>
                   <h4 className="dress-name">Festive Lehenga</h4>
                   <span className="dress-price">$39<span>/day</span></span>
                 </div>
               </div>
+              <Link to="/booking/3" className="rent-btn-card">Rent Now</Link>
             </div>
             {/* Card 4 */}
             <div className="dress-card glass-panel">
-              <div className="card-badge">🎉 Wedding</div>
+              <div className="card-badge">Wedding</div>
               <div className="media-wrapper">
                 <img 
                   src="https://images.unsplash.com/photo-1617137968427-85924d800a22?w=500&q=80" 
                   alt="Sherwani" 
                   className="card-img" 
                 />
-                <video className="card-video" loop muted playsInline>
-                  <source src="#" type="video/mp4" />
-                </video>
-                <div className="playing-indicator">
-                  <span className="live-dot"></span>
-                  <span className="live-text">Playing</span>
-                </div>
-                <button className="quick-view-btn">
-                  <i className="ri-eye-line"></i>
-                </button>
                 <div className="card-info">
                   <span className="dress-type">Sherwani</span>
                   <h4 className="dress-name">Royal Sherwani</h4>
                   <span className="dress-price">$45<span>/day</span></span>
                 </div>
               </div>
+              <Link to="/booking/4" className="rent-btn-card">Rent Now</Link>
             </div>
             {/* Card 5 */}
             <div className="dress-card glass-panel">
-              <div className="card-badge">✨ Designer</div>
+              <div className="card-badge">Designer</div>
               <div className="media-wrapper">
                 <img 
                   src="https://images.unsplash.com/photo-1610197519343-3b2daafb5780?w=500&q=80" 
                   alt="Anarkali" 
                   className="card-img" 
                 />
-                <video className="card-video" loop muted playsInline>
-                  <source src="#" type="video/mp4" />
-                </video>
-                <div className="playing-indicator">
-                  <span className="live-dot"></span>
-                  <span className="live-text">Playing</span>
-                </div>
-                <button className="quick-view-btn">
-                  <i className="ri-eye-line"></i>
-                </button>
                 <div className="card-info">
                   <span className="dress-type">Anarkali</span>
                   <h4 className="dress-name">Silk Anarkali</h4>
                   <span className="dress-price">$32<span>/day</span></span>
                 </div>
               </div>
+              <Link to="/booking/5" className="rent-btn-card">Rent Now</Link>
             </div>
             {/* Card 6 */}
             <div className="dress-card glass-panel">
-              <div className="card-badge">🎊 Festive</div>
+              <div className="card-badge">Festive</div>
               <div className="media-wrapper">
                 <img 
                   src="https://images.unsplash.com/photo-1556906781-9a412961b4f8?w=500&q=80" 
                   alt="Dhoti Kurta" 
                   className="card-img" 
                 />
-                <video className="card-video" loop muted playsInline>
-                  <source src="#" type="video/mp4" />
-                </video>
-                <div className="playing-indicator">
-                  <span className="live-dot"></span>
-                  <span className="live-text">Playing</span>
-                </div>
-                <button className="quick-view-btn">
-                  <i className="ri-eye-line"></i>
-                </button>
                 <div className="card-info">
                   <span className="dress-type">Dhoti Set</span>
                   <h4 className="dress-name">Classic Dhoti Kurta</h4>
                   <span className="dress-price">$22<span>/day</span></span>
                 </div>
               </div>
+              <Link to="/booking/6" className="rent-btn-card">Rent Now</Link>
             </div>
           </div>
         </div>
       </section>
 
-      {/* 📋 RENTAL PROCESS */}
+      {/* RENTAL PROCESS */}
       <section id="process" className="section">
         <div className="container">
           <div className="section-header">
@@ -373,7 +270,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ❓ FAQ SECTION */}
+      {/* FAQ SECTION */}
       <section id="faq" className="section bg-white-soft">
         <div className="container">
           <div className="section-header">
@@ -382,55 +279,55 @@ export default function Home() {
           </div>
           <div className="faq-grid">
             <div className="faq-item glass-panel">
-              <button className="faq-question">
+              <div className="faq-question">
                 <span>What if the dress doesn't fit?</span>
                 <i className="ri-arrow-down-s-line"></i>
-              </button>
+              </div>
               <div className="faq-answer">
                 <p>We offer free alterations. Simply schedule a trial fitting and our master tailors will adjust it perfectly. If it still doesn't work, you can exchange for another size at no extra cost.</p>
               </div>
             </div>
             <div className="faq-item glass-panel">
-              <button className="faq-question">
+              <div className="faq-question">
                 <span>How is the dress cleaned?</span>
                 <i className="ri-arrow-down-s-line"></i>
-              </button>
+              </div>
               <div className="faq-answer">
                 <p>Every dress is professionally dry-cleaned and sanitized after each rental. We use eco-friendly, hypoallergenic detergents safe for sensitive skin.</p>
               </div>
             </div>
             <div className="faq-item glass-panel">
-              <button className="faq-question">
+              <div className="faq-question">
                 <span>What about late returns?</span>
                 <i className="ri-arrow-down-s-line"></i>
-              </button>
+              </div>
               <div className="faq-answer">
                 <p>We offer a 24-hour grace period. Additional days are charged at 30% of the daily rate. You can also extend your rental directly from your account.</p>
               </div>
             </div>
             <div className="faq-item glass-panel">
-              <button className="faq-question">
+              <div className="faq-question">
                 <span>Do you offer destination delivery?</span>
                 <i className="ri-arrow-down-s-line"></i>
-              </button>
+              </div>
               <div className="faq-answer">
                 <p>Yes! We deliver to most wedding destinations. Additional shipping charges may apply based on location. Contact us for a quote.</p>
               </div>
             </div>
             <div className="faq-item glass-panel">
-              <button className="faq-question">
+              <div className="faq-question">
                 <span>Can I book a trial?</span>
                 <i className="ri-arrow-down-s-line"></i>
-              </button>
+              </div>
               <div className="faq-answer">
                 <p>Absolutely. You can book a home trial of up to 3 dresses for $10 (refunded upon rental). Our stylist will assist you.</p>
               </div>
             </div>
             <div className="faq-item glass-panel">
-              <button className="faq-question">
+              <div className="faq-question">
                 <span>What if I damage the dress?</span>
                 <i className="ri-arrow-down-s-line"></i>
-              </button>
+              </div>
               <div className="faq-answer">
                 <p>Minor wear is expected and covered. Significant damage is assessed case-by-case with a maximum charge of 40% of retail value.</p>
               </div>
@@ -439,7 +336,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* 📞 CONTACT SECTION */}
+      {/* CONTACT SECTION */}
       <section id="contact" className="section">
         <div className="container">
           <div className="section-header">
@@ -527,7 +424,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* 🔗 FOOTER - Reusable Footer */}
+      {/* FOOTER */}
       <Footer />
     </div>
   );

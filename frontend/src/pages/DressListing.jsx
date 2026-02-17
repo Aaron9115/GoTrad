@@ -1,12 +1,11 @@
 import React, { useState, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom"; // Added useNavigate
+import { Link, useNavigate } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import "./DressListing.css";
 
 // Mockup Nepali Traditional Dresses Data (Fallback)
 const mockDresses = [
-  // Wedding Collection
   {
     _id: "1",
     name: "Red Gunyu Cholo",
@@ -14,12 +13,10 @@ const mockDresses = [
     size: "M",
     color: "Red",
     pricePerDay: 2500,
-    description: "Traditional Nepali red Gunyu Cholo with gold embroidery, perfect for weddings and ceremonies.",
+    description: "Traditional Nepali red Gunyu Cholo with gold embroidery.",
     images: ["https://images.unsplash.com/photo-1583391733956-3750e0ff4e8b?w=600&q=80"],
     owner: { name: "Himalayan Heritage" },
-    available: true,
-    isNew: true,
-    type: "Wedding"
+    available: true
   },
   {
     _id: "2",
@@ -28,12 +25,10 @@ const mockDresses = [
     size: "L",
     color: "Maroon",
     pricePerDay: 3200,
-    description: "Traditional Haku Patasi in rich maroon with intricate silver work, worn during special occasions.",
+    description: "Traditional Haku Patasi in rich maroon with silver work.",
     images: ["https://images.unsplash.com/photo-1617128077837-60a09f9596ae?w=600&q=80"],
     owner: { name: "Nepali Cultural Wear" },
-    available: true,
-    isNew: false,
-    type: "Wedding"
+    available: true
   },
   {
     _id: "3",
@@ -42,15 +37,11 @@ const mockDresses = [
     size: "XL",
     color: "Gold",
     pricePerDay: 4500,
-    description: "Stunning gold bridal lehenga with heavy embroidery, perfect for the main wedding ceremony.",
+    description: "Gold bridal lehenga with embroidery for wedding ceremonies.",
     images: ["https://images.unsplash.com/photo-1588357716680-17909c80b91d?w=600&q=80"],
     owner: { name: "Bridal Collection Nepal" },
-    available: true,
-    isNew: true,
-    type: "Wedding"
+    available: true
   },
-
-  // Festival Collection
   {
     _id: "4",
     name: "Green Pote Salwar",
@@ -58,12 +49,10 @@ const mockDresses = [
     size: "S",
     color: "Green",
     pricePerDay: 1800,
-    description: "Beautiful green Pote Salwar with traditional beadwork, ideal for Teej and other festivals.",
+    description: "Green Pote Salwar with beadwork for Teej and festivals.",
     images: ["https://images.unsplash.com/photo-1610197519343-3b2daafb5780?w=600&q=80"],
     owner: { name: "Festive Wear Nepal" },
-    available: true,
-    isNew: false,
-    type: "Festival"
+    available: true
   },
   {
     _id: "5",
@@ -72,12 +61,10 @@ const mockDresses = [
     size: "M",
     color: "Blue",
     pricePerDay: 1500,
-    description: "Traditional Dhaka Topi set with matching Kurta, perfect for Dashain and Tihar celebrations.",
+    description: "Dhaka Topi set with matching Kurta for Dashain and Tihar.",
     images: ["https://images.unsplash.com/photo-1556906781-9a412961b4f8?w=600&q=80"],
     owner: { name: "Dhaka Collection" },
-    available: true,
-    isNew: true,
-    type: "Festival"
+    available: true
   },
   {
     _id: "6",
@@ -86,102 +73,10 @@ const mockDresses = [
     size: "L",
     color: "Pink",
     pricePerDay: 1600,
-    description: "Traditional pink Fariya with golden border, worn during cultural festivals and gatherings.",
+    description: "Pink Fariya with golden border for cultural festivals.",
     images: ["https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=600&q=80"],
     owner: { name: "Nepali Traditions" },
-    available: true,
-    isNew: false,
-    type: "Festival"
-  },
-
-  // Party Collection
-  {
-    _id: "7",
-    name: "Black Saree with Blouse",
-    category: "Party",
-    size: "M",
-    color: "Black",
-    pricePerDay: 2200,
-    description: "Elegant black saree with silver border and matching blouse, perfect for parties and events.",
-    images: ["https://images.unsplash.com/photo-1585487000160-6ebcfceb0d03?w=600&q=80"],
-    owner: { name: "Modern Ethnic Wear" },
-    available: true,
-    isNew: true,
-    type: "Party"
-  },
-  {
-    _id: "8",
-    name: "Purple Anarkali",
-    category: "Party",
-    size: "S",
-    color: "Purple",
-    pricePerDay: 2400,
-    description: "Royal purple Anarkali with traditional Nepali embroidery, great for cocktail parties.",
-    images: ["https://images.unsplash.com/photo-1617137968427-85924d800a22?w=600&q=80"],
-    owner: { name: "Ethnic Fusion" },
-    available: true,
-    isNew: false,
-    type: "Party"
-  },
-  {
-    _id: "9",
-    name: "Navy Blue Kurta Set",
-    category: "Party",
-    size: "L",
-    color: "Navy",
-    pricePerDay: 1900,
-    description: "Navy blue kurta set with subtle gold accents, perfect for evening parties and gatherings.",
-    images: ["https://images.unsplash.com/photo-1617128077837-60a09f9596ae?w=600&q=80"],
-    owner: { name: "Men's Traditional Wear" },
-    available: true,
-    isNew: false,
-    type: "Party"
-  },
-
-  // More Wedding Collection
-  {
-    _id: "10",
-    name: "White Bridal Sherwani",
-    category: "Wedding",
-    size: "XL",
-    color: "White",
-    pricePerDay: 3800,
-    description: "Elegant white sherwani with gold embroidery, perfect for groom's wedding attire.",
-    images: ["https://images.unsplash.com/photo-1617137968427-85924d800a22?w=600&q=80"],
-    owner: { name: "Groom's Collection" },
-    available: true,
-    isNew: true,
-    type: "Wedding"
-  },
-  {
-    _id: "11",
-    name: "Red Bridal Lehenga",
-    category: "Wedding",
-    size: "M",
-    color: "Red",
-    pricePerDay: 4200,
-    description: "Traditional red bridal lehenga with heavy zari work and dupatta.",
-    images: ["https://images.unsplash.com/photo-1588357716680-17909c80b91d?w=600&q=80"],
-    owner: { name: "Bridal Collection" },
-    available: true,
-    isNew: false,
-    type: "Wedding"
-  },
-
-  // More Festival Collection
-  {
-    _id: "12",
-    name: "Yellow Dhaka Topi",
-    category: "Festival",
-    size: "M",
-    color: "Yellow",
-    pricePerDay: 1200,
-    description: "Traditional yellow Dhaka Topi set for festival celebrations.",
-    images: ["https://images.unsplash.com/photo-1556906781-9a412961b4f8?w=600&q=80"],
-    owner: { name: "Dhaka Collection" },
-    available: true,
-    isNew: true,
-    type: "Festival"
+    available: true
   }
 ];
 
@@ -199,8 +94,15 @@ const DressListing = () => {
   const [activeVideo, setActiveVideo] = useState(0);
   const [usingMockData, setUsingMockData] = useState(false);
   
-  // Added useNavigate hook
   const navigate = useNavigate();
+
+  // Auto-rotate videos in the hero banner
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setActiveVideo((prev) => (prev + 1) % 3);
+    }, 5000);
+    return () => clearInterval(interval);
+  }, []);
 
   // Fetch dresses from backend with fallback to mock data
   useEffect(() => {
@@ -209,16 +111,12 @@ const DressListing = () => {
       setError(null);
       
       try {
-        // Build query string from filters
         const queryParams = new URLSearchParams();
         if (filters.category) queryParams.append("category", filters.category);
         if (filters.size) queryParams.append("size", filters.size);
         if (filters.color) queryParams.append("color", filters.color);
 
-        // Using the browse endpoint from your backend
         const url = `/api/browse${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
-        
-        console.log('Fetching from:', url); // Debug log
         
         const response = await fetch(url);
         
@@ -227,26 +125,22 @@ const DressListing = () => {
         }
         
         const data = await response.json();
-        console.log('Received data from backend:', data); // Debug log
         
         if (data.length === 0) {
-          // No dresses found in backend
           setDresses([]);
           setUsingMockData(false);
         } else {
-          // Transform backend data to match frontend structure
           const transformedDresses = data.map(dress => ({
             _id: dress._id,
             name: dress.name,
             category: dress.category,
             size: dress.size,
             color: dress.color,
-            pricePerDay: dress.price, // Backend uses "price", frontend uses "pricePerDay"
+            pricePerDay: dress.price,
             description: `${dress.category} - ${dress.color} traditional dress`,
             images: [dress.image || "https://images.unsplash.com/photo-1583391733956-3750e0ff4e8b?w=600&q=80"],
             owner: dress.owner || { name: "Heritage Rental" },
-            available: dress.available !== undefined ? dress.available : true,
-            isNew: false // You might want to add this field in backend
+            available: dress.available !== undefined ? dress.available : true
           }));
           
           setDresses(transformedDresses);
@@ -257,11 +151,8 @@ const DressListing = () => {
         console.error('Backend connection failed:', err);
         setError("Backend connection failed. Showing sample collection.");
         
-        // Fallback to mock data when backend is unavailable
-        console.log('Using mock data as fallback');
         let filteredMock = [...mockDresses];
         
-        // Apply filters to mock data
         if (filters.category) {
           filteredMock = filteredMock.filter(d => d.category === filters.category);
         }
@@ -282,26 +173,21 @@ const DressListing = () => {
     fetchDresses();
   }, [filters.category, filters.size, filters.color]);
 
-  // Auto-rotate videos in the hero banner
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setActiveVideo((prev) => (prev + 1) % 3);
-    }, 5000);
-    return () => clearInterval(interval);
-  }, []);
-
-  // Handle filter change
   const handleFilterChange = (e) => {
     const { name, value } = e.target;
     setFilters(prev => ({ ...prev, [name]: value }));
   };
 
-  // Clear all filters
   const clearFilters = () => {
     setFilters({ category: "", size: "", color: "" });
   };
 
   const hasActiveFilters = filters.category || filters.size || filters.color;
+
+  const handleRentNow = (e, dressId) => {
+    e.preventDefault();
+    navigate(`/booking/${dressId}`);
+  };
 
   // Video banner content
   const videoBanners = [
@@ -322,18 +208,11 @@ const DressListing = () => {
     }
   ];
 
-  // Handle rent now click - NEW FUNCTION
-  const handleRentNow = (e, dressId) => {
-    e.preventDefault();
-    navigate(`/booking/${dressId}`);
-  };
-
   return (
     <div className="dress-listing">
-      {/* Reusable Navbar */}
       <Navbar />
 
-      {/* 🎥 MODERN VIDEO/GIF CONTAINER AT TOP */}
+      {/* 🎥 VIDEO HEADER AT TOP */}
       <div className="video-hero-container">
         <div className="video-background">
           {videoBanners.map((banner, index) => (
@@ -374,28 +253,28 @@ const DressListing = () => {
             ))}
           </div>
           <div className="video-cta">
-            <Link to="#collection" className="btn-primary btn-large">
+            <a href="#collection" className="btn-primary btn-large">
               <span>Browse Collection</span>
               <i className="ri-arrow-right-line"></i>
-            </Link>
-            <Link to="/process" className="btn-outline btn-large">
+            </a>
+            <a href="#how-it-works" className="btn-outline btn-large">
               <span>How It Works</span>
               <i className="ri-information-line"></i>
-            </Link>
+            </a>
           </div>
         </div>
 
         {/* Floating stats cards */}
         <div className="video-stats">
-          <div className="stat-card glass-panel">
+          <div className="stat-card">
             <span className="stat-number">200+</span>
             <span className="stat-label">Nepali Dresses</span>
           </div>
-          <div className="stat-card glass-panel">
+          <div className="stat-card">
             <span className="stat-number">50+</span>
             <span className="stat-label">Designers</span>
           </div>
-          <div className="stat-card glass-panel">
+          <div className="stat-card">
             <span className="stat-number">1000+</span>
             <span className="stat-label">Happy Customers</span>
           </div>
@@ -403,16 +282,16 @@ const DressListing = () => {
       </div>
 
       {/* Header */}
-      <div className="listing-header">
+      <div className="listing-header" id="collection">
         <div className="container">
-          <h1 className="listing-title">Browse Our Nepali Collection</h1>
+          <h1 className="listing-title">Browse Our Collection</h1>
           <p className="listing-subtitle">
-            Discover the perfect traditional Nepali dress for your special occasion
+            Discover traditional Nepali dresses for your special occasion
           </p>
           {usingMockData && (
             <div className="mock-data-badge">
               <i className="ri-information-line"></i>
-              <span>Showing sample collection (Backend not connected)</span>
+              <span>Showing sample collection</span>
             </div>
           )}
         </div>
@@ -436,14 +315,12 @@ const DressListing = () => {
             <button 
               className={`view-btn ${viewMode === "grid" ? "active" : ""}`}
               onClick={() => setViewMode("grid")}
-              aria-label="Grid view"
             >
               <i className="ri-grid-line"></i>
             </button>
             <button 
               className={`view-btn ${viewMode === "list" ? "active" : ""}`}
               onClick={() => setViewMode("list")}
-              aria-label="List view"
             >
               <i className="ri-list-check-2"></i>
             </button>
@@ -501,7 +378,6 @@ const DressListing = () => {
               <option value="Purple">Purple</option>
               <option value="Black">Black</option>
               <option value="White">White</option>
-              <option value="Yellow">Yellow</option>
             </select>
           </div>
 
@@ -516,9 +392,8 @@ const DressListing = () => {
         {/* Results Info */}
         <div className="results-info">
           <p>
-            <span className="results-count">{dresses.length}</span> Nepali traditional dresses found
+            <span className="results-count">{dresses.length}</span> dresses found
             {hasActiveFilters && " with selected filters"}
-            {usingMockData && <span className="mock-indicator"> (Sample Data)</span>}
           </p>
         </div>
 
@@ -526,7 +401,7 @@ const DressListing = () => {
         {loading && (
           <div className="loading-state">
             <div className="spinner"></div>
-            <p>Loading beautiful Nepali dresses...</p>
+            <p>Loading dresses...</p>
           </div>
         )}
 
@@ -546,7 +421,7 @@ const DressListing = () => {
           <div className="empty-state">
             <i className="ri-inbox-line"></i>
             <h3>No dresses found</h3>
-            <p>Try adjusting your filters or check back later</p>
+            <p>Try adjusting your filters</p>
             {hasActiveFilters && (
               <button className="clear-filters-btn large" onClick={clearFilters}>
                 Clear Filters
@@ -555,13 +430,13 @@ const DressListing = () => {
           </div>
         )}
 
-        {/* Dress Grid/List */}
+        {/* Dress Grid/List - SIMPLIFIED CARDS */}
         {!loading && dresses.length > 0 && (
           <div className={`dress-results ${viewMode}`}>
             {dresses.map((dress) => (
-              <Link to={`/dress/${dress._id}`} key={dress._id} className="dress-item-link">
+              <Link to={`/booking/${dress._id}`} key={dress._id} className="dress-item-link">
                 {viewMode === "grid" ? (
-                  // Grid View Card
+                  // GRID VIEW CARD - SIMPLE
                   <div className="dress-card">
                     <div className="dress-image-wrapper">
                       <img 
@@ -570,41 +445,27 @@ const DressListing = () => {
                         className="dress-image"
                       />
                       {!dress.available && (
-                        <div className="dress-badge unavailable">Rented</div>
+                        <span className="dress-badge">Rented</span>
                       )}
-                      {dress.isNew && (
-                        <div className="dress-badge new">New</div>
-                      )}
-                      <button className="wishlist-btn" onClick={(e) => {
-                        e.preventDefault();
-                        alert('Add to wishlist functionality coming soon!');
-                      }}>
-                        <i className="ri-heart-line"></i>
-                      </button>
-                      <div className="dress-type-badge">
-                        <i className="ri-map-pin-line"></i>
-                        <span>Nepali</span>
-                      </div>
                     </div>
                     <div className="dress-info">
                       <h3 className="dress-name">{dress.name}</h3>
                       <p className="dress-category">{dress.category}</p>
-                      <div className="dress-details">
-                        <span className="dress-price">₹{dress.pricePerDay}<span>/day</span></span>
-                        <div className="dress-meta">
-                          <span className="dress-size">{dress.size}</span>
-                          <span className="dress-color" style={{ backgroundColor: dress.color.toLowerCase() }}></span>
-                        </div>
+                      <p className="dress-size">Size: {dress.size}</p>
+                      <div className="dress-price-row">
+                        <span className="dress-price">₹{dress.pricePerDay}</span>
+                        <span className="dress-per-day">/day</span>
                       </div>
-                      {dress.owner && (
-                        <p className="dress-owner">
-                          <i className="ri-user-line"></i> {dress.owner.name}
-                        </p>
-                      )}
+                      <button 
+                        className="rent-btn" 
+                        onClick={(e) => handleRentNow(e, dress._id)}
+                      >
+                        Rent Now
+                      </button>
                     </div>
                   </div>
                 ) : (
-                  // List View Card - UPDATED with working Rent Now button
+                  // LIST VIEW CARD - SIMPLE
                   <div className="dress-list-card">
                     <div className="list-image-wrapper">
                       <img 
@@ -613,48 +474,24 @@ const DressListing = () => {
                         className="list-image"
                       />
                       {!dress.available && (
-                        <div className="dress-badge unavailable">Rented</div>
+                        <span className="dress-badge">Rented</span>
                       )}
-                      <div className="dress-type-badge list">
-                        <i className="ri-map-pin-line"></i>
-                        <span>Nepali</span>
-                      </div>
                     </div>
-                    <div className="list-content">
-                      <div className="list-header">
-                        <h3 className="list-name">{dress.name}</h3>
-                        <button className="list-wishlist" onClick={(e) => {
-                          e.preventDefault();
-                          alert('Add to wishlist functionality coming soon!');
-                        }}>
-                          <i className="ri-heart-line"></i>
-                        </button>
-                      </div>
+                    <div className="list-info">
+                      <h3 className="list-name">{dress.name}</h3>
                       <p className="list-category">{dress.category}</p>
-                      <p className="list-description">
-                        {dress.description}
-                      </p>
-                      <div className="list-details">
-                        <div className="list-specs">
-                          <span><i className="ri-ruler-line"></i> Size: {dress.size}</span>
-                          <span><i className="ri-palette-line"></i> Color: {dress.color}</span>
-                        </div>
-                        <div className="list-price-section">
-                          <span className="list-price">₹{dress.pricePerDay}<span>/day</span></span>
-                          {/* UPDATED: Rent Now button now navigates to booking page */}
-                          <button 
-                            className="rent-now-btn" 
-                            onClick={(e) => handleRentNow(e, dress._id)}
-                          >
-                            Rent Now
-                          </button>
-                        </div>
+                      <p className="list-description">{dress.description}</p>
+                      <p className="list-size">Size: {dress.size} | Color: {dress.color}</p>
+                      <div className="list-price-row">
+                        <span className="list-price">₹{dress.pricePerDay}</span>
+                        <span className="list-per-day">/day</span>
                       </div>
-                      {dress.owner && (
-                        <p className="list-owner">
-                          <i className="ri-user-line"></i> {dress.owner.name}
-                        </p>
-                      )}
+                      <button 
+                        className="list-rent-btn" 
+                        onClick={(e) => handleRentNow(e, dress._id)}
+                      >
+                        Rent Now
+                      </button>
                     </div>
                   </div>
                 )}
@@ -664,7 +501,6 @@ const DressListing = () => {
         )}
       </div>
 
-      {/* Reusable Footer */}
       <Footer />
     </div>
   );

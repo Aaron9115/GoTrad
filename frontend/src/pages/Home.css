@@ -1007,3 +1007,76 @@ h1, h2, h3, h4, h5 {
 
 /* ---------- REMIX ICONS CDN ---------- */
 @import url('https://cdn.jsdelivr.net/npm/remixicon@4.3.0/fonts/remixicon.css');
+
+
+
+
+
+/* Rent Now Button on Cards */
+.rent-btn-card {
+  display: block;
+  width: calc(100% - 32px);
+  margin: 0 16px 16px 16px;
+  padding: 10px 0;
+  background: linear-gradient(145deg, #0284c7, #0369a1);
+  color: white;
+  text-align: center;
+  text-decoration: none;
+  font-weight: 600;
+  border-radius: 30px;
+  font-size: 0.9rem;
+  transition: background 0.2s;
+}
+
+.rent-btn-card:hover {
+  background: linear-gradient(145deg, #0369a1, #0284c7);
+}
+
+/* Adjust card padding for rent button */
+.dress-card {
+  padding: 16px 16px 0 16px;
+}
+
+/* Remove video-related styles since they're not used */
+.card-video,
+.playing-indicator,
+.quick-view-btn,
+.live-dot {
+  display: none;
+}
+
+/* Keep card hover effect but remove video transition */
+.dress-card:hover {
+  transform: translateY(-8px) scale(1.02);
+}
+
+.dress-card:hover .card-img {
+  opacity: 1; /* Keep image visible */
+}
+
+/* Make filter buttons functional without JavaScript */
+.filter-btn {
+  cursor: pointer;
+}
+
+/* Make FAQ items functional without JavaScript */
+.faq-item.active .faq-answer {
+  max-height: 300px;
+  padding: 0 28px 24px;
+  opacity: 1;
+  border-top-color: rgba(2, 132, 199, 0.2);
+}
+
+.faq-item.active .faq-question i {
+  transform: rotate(180deg);
+}
+
+/* Initial state for FAQ answers */
+.faq-answer {
+  max-height: 0;
+  padding: 0 28px;
+  opacity: 0;
+  overflow: hidden;
+  transition: all 0.3s;
+}
+
