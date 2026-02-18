@@ -136,25 +136,19 @@ const AIRecommendation = () => {
     }
   ];
 
-  // FIXED: Proper Flask backend status check
+  // Check backend status
   useEffect(() => {
     const checkFlaskBackend = async () => {
       try {
-        // Try a simple GET request to the endpoint
         const response = await fetch('http://localhost:5001/predict-skin-tone', {
           method: 'GET',
           headers: { 'Content-Type': 'application/json' },
-          // Short timeout to avoid long waiting
           signal: AbortSignal.timeout(2000)
         });
-        
-        // If we get ANY response (even error), the server is running
         setFlaskStatus('online');
         console.log('✅ Flask backend connected on port 5001');
       } catch (err) {
         console.log('Flask connection error:', err.message);
-        
-        // Try one more time with a different method
         try {
           const response = await fetch('http://localhost:5001/predict-skin-tone', {
             method: 'OPTIONS',
@@ -169,7 +163,6 @@ const AIRecommendation = () => {
       }
     };
     
-    // Check Node.js server status
     const checkNodeBackend = async () => {
       try {
         const response = await fetch('/api/browse', {
@@ -191,18 +184,7 @@ const AIRecommendation = () => {
     checkNodeBackend();
   }, []);
 
-  useEffect(() => {
-    if (step === 2) {
-      tipsIntervalRef.current = setInterval(() => {
-        setActiveTip((prev) => (prev + 1) % tips.length);
-      }, 4000);
-    }
-    return () => {
-      if (tipsIntervalRef.current) {
-        clearInterval(tipsIntervalRef.current);
-      }
-    };
-  }, [step, tips.length]);
+  // Tip rotation removed - keeping static tips
 
   useEffect(() => {
     return () => {
@@ -325,7 +307,6 @@ const AIRecommendation = () => {
 
     setLoading(true);
     
-    // Always try to use Flask backend first
     try {
       const formData = new FormData();
       formData.append("image", window.capturedImageBlob, "face.jpg");
@@ -342,7 +323,6 @@ const AIRecommendation = () => {
         setSkinTone(data.skin_tone);
         setFlaskStatus('online');
         
-        // Try to get dresses from Node backend
         if (nodeStatus === 'online') {
           try {
             const dressResponse = await fetch(`/api/dresses?skinTone=${data.skin_tone}`);
@@ -481,47 +461,13 @@ const AIRecommendation = () => {
           <p>Discover the perfect dress colors that complement your unique skin tone</p>
           
           {/* Server Status Indicators */}
-          <div style={{
-            display: 'flex',
-            justifyContent: 'center',
-            gap: '20px',
-            marginTop: '15px',
-            fontSize: '0.85rem'
-          }}>
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '5px',
-              padding: '5px 10px',
-              background: flaskStatus === 'online' ? '#10b98120' : '#ef444420',
-              borderRadius: '20px',
-              color: flaskStatus === 'online' ? '#10b981' : '#ef4444'
-            }}>
-              <span style={{
-                width: '8px',
-                height: '8px',
-                borderRadius: '50%',
-                background: flaskStatus === 'online' ? '#10b981' : '#ef4444',
-                display: 'inline-block'
-              }}></span>
+          <div className="server-status">
+            <div className={`status-badge ${flaskStatus === 'online' ? 'online' : 'offline'}`}>
+              <span className="status-dot"></span>
               AI Model: {flaskStatus === 'online' ? 'Connected' : 'Offline'}
             </div>
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '5px',
-              padding: '5px 10px',
-              background: nodeStatus === 'online' ? '#10b98120' : '#ef444420',
-              borderRadius: '20px',
-              color: nodeStatus === 'online' ? '#10b981' : '#ef4444'
-            }}>
-              <span style={{
-                width: '8px',
-                height: '8px',
-                borderRadius: '50%',
-                background: nodeStatus === 'online' ? '#10b981' : '#ef4444',
-                display: 'inline-block'
-              }}></span>
+            <div className={`status-badge ${nodeStatus === 'online' ? 'online' : 'offline'}`}>
+              <span className="status-dot"></span>
               Database: {nodeStatus === 'online' ? 'Connected' : 'Offline'}
             </div>
           </div>
@@ -549,12 +495,10 @@ const AIRecommendation = () => {
           <div className="intro-section">
             {/* Main CTA Card */}
             <div className="intro-main-card glass-panel">
-              <div className="intro-animation">
-                <div className="floating-icons">
-                  <i className="ri-camera-line"></i>
-                  <i className="ri-magic-line"></i>
-                  <i className="ri-shirt-line"></i>
-                </div>
+              <div className="intro-icons">
+                <i className="ri-camera-line"></i>
+                <i className="ri-magic-line"></i>
+                <i className="ri-shirt-line"></i>
               </div>
               
               <h2>Discover Your Perfect Match</h2>
@@ -563,7 +507,7 @@ const AIRecommendation = () => {
               </p>
 
               <button 
-                className="btn-primary btn-large pulse-animation"
+                className="btn-primary btn-large"
                 onClick={() => setStep(2)}
               >
                 <i className="ri-camera-line"></i>
@@ -638,7 +582,7 @@ const AIRecommendation = () => {
                     </div>
                     <p className="testimonial-text">"{testimonial.text}"</p>
                     <div className="testimonial-user">
-                      <div className="user-avatar" style={{ background: `linear-gradient(135deg, #0284c7, #38bdf8)` }}>
+                      <div className="user-avatar">
                         {testimonial.avatar}
                       </div>
                       <div className="user-info">
@@ -693,8 +637,8 @@ const AIRecommendation = () => {
           <div className="camera-section glass-panel">
             {/* Camera Status */}
             <div className="camera-status">
-              <p>📹 Camera Status: {videoElementCreated ? 'Ready' : 'Initializing...'}</p>
-              <p>🎥 Camera Active: {cameraActive ? 'Yes' : 'No'}</p>
+              <p>📹 Camera: {videoElementCreated ? 'Ready' : 'Initializing...'}</p>
+              <p>🎥 Active: {cameraActive ? 'Yes' : 'No'}</p>
             </div>
 
             {cameraError && (
@@ -728,7 +672,7 @@ const AIRecommendation = () => {
             </div>
 
             {/* Controls */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            <div className="camera-controls-vertical">
               {!cameraActive ? (
                 <button 
                   className="btn-primary btn-large"
@@ -760,31 +704,15 @@ const AIRecommendation = () => {
               </button>
             </div>
 
-            {/* Tips Carousel */}
+            {/* Tips - Static */}
             {cameraActive && (
-              <div className="tips-carousel">
-                <div 
-                  className="tip-card" 
-                  style={{ 
-                    background: `linear-gradient(135deg, ${tips[activeTip].color}20, ${tips[activeTip].color}40)`,
-                    borderColor: tips[activeTip].color
-                  }}
-                >
-                  <i className={tips[activeTip].icon} style={{ color: tips[activeTip].color }}></i>
-                  <div className="tip-content">
+              <div className="tips-static">
+                <div className="tip-static">
+                  <i className={tips[activeTip].icon}></i>
+                  <div>
                     <h4>{tips[activeTip].title}</h4>
                     <p>{tips[activeTip].description}</p>
                   </div>
-                </div>
-                <div className="tip-dots">
-                  {tips.map((_, index) => (
-                    <button
-                      key={index}
-                      className={`tip-dot ${activeTip === index ? "active" : ""}`}
-                      onClick={() => setActiveTip(index)}
-                      style={{ backgroundColor: tips[index].color }}
-                    />
-                  ))}
                 </div>
               </div>
             )}

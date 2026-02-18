@@ -231,10 +231,7 @@ const DressListing = () => {
         </div>
         
         <div className="video-content">
-          <div className="video-badge">
-            <i className="ri-camera-line"></i>
-            <span>Nepali Heritage Collection</span>
-          </div>
+          
           <h1 className="video-title">
             {videoBanners[activeVideo].title}
           </h1>
@@ -257,10 +254,7 @@ const DressListing = () => {
               <span>Browse Collection</span>
               <i className="ri-arrow-right-line"></i>
             </a>
-            <a href="#how-it-works" className="btn-outline btn-large">
-              <span>How It Works</span>
-              <i className="ri-information-line"></i>
-            </a>
+            
           </div>
         </div>
 

@@ -14,10 +14,7 @@ export default function Home() {
       <section id="hero" className="hero">
         <div className="hero-bg-overlay"></div>
         <div className="hero-content glass-panel">
-          <div className="premium-badge">
-            <i className="ri-star-fill"></i>
-            <span>Premium Heritage Rentals</span>
-          </div>
+          
           <h1>
             Celebrate <span className="gradient-text">Heritage</span><br />
             in Style
