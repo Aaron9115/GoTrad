@@ -63,7 +63,7 @@ const Navbar = () => {
       case "admin":
         return "/admin/dashboard";
       case "owner":
-        return "/owner/dresses";
+        return "/owner/dashboard"; // Changed from "/owner/dresses" to "/owner/dashboard"
       default:
         return "/profile";
     }
@@ -87,7 +87,6 @@ const Navbar = () => {
               <Link to="/ai-recommendation" className="nav-link">AI Recommendation</Link>
               <Link to="/virtual-tryon" className="nav-link">Virtual Try-On</Link>
               <button onClick={() => scrollToSection("faq")} className="nav-link">FAQ</button>
-          
               <Link to="/contact" className="nav-link">Contact</Link>
             </>
           ) : (
@@ -135,10 +134,11 @@ const Navbar = () => {
                       My Bookings
                     </Link>
                   )}
+                  {/* OWNER DASHBOARD LINK - ADDED HERE */}
                   {user.role === 'owner' && (
-                    <Link to="/owner/dresses" className="dropdown-item">
+                    <Link to="/owner/dashboard" className="dropdown-item">
                       <i className="ri-store-line"></i>
-                      My Dresses
+                      Owner Dashboard
                     </Link>
                   )}
                   <div className="dropdown-divider"></div>
@@ -198,7 +198,6 @@ const Navbar = () => {
               <i className="ri-question-line"></i>
               FAQ
             </button>
-            {/* FIXED: Contact now links to page, not scroll */}
             <Link to="/contact" className="mobile-nav-link" onClick={() => setMobileMenuOpen(false)}>
               <i className="ri-customer-service-line"></i>
               Contact
@@ -273,10 +272,11 @@ const Navbar = () => {
                 My Bookings
               </Link>
             )}
+            {/* OWNER DASHBOARD LINK IN MOBILE MENU */}
             {user.role === 'owner' && (
-              <Link to="/owner/dresses" className="mobile-nav-link" onClick={() => setMobileMenuOpen(false)}>
+              <Link to="/owner/dashboard" className="mobile-nav-link" onClick={() => setMobileMenuOpen(false)}>
                 <i className="ri-store-line"></i>
-                My Dresses
+                Owner Dashboard
               </Link>
             )}
             <button onClick={handleLogout} className="mobile-nav-link logout">

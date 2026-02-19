@@ -1,10 +1,40 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import "./Home.css";
 
 export default function Home() {
+  const [dresses, setDresses] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  // Fetch real dresses from backend
+  useEffect(() => {
+    const fetchDresses = async () => {
+      try {
+        const response = await fetch('http://localhost:5000/api/browse');
+        
+        if (!response.ok) {
+          throw new Error('Failed to fetch dresses');
+        }
+        
+        const data = await response.json();
+        
+        // Take only first 6 dresses for homepage display
+        const recentDresses = data.slice(0, 6);
+        setDresses(recentDresses);
+        setLoading(false);
+      } catch (err) {
+        console.error('Error fetching dresses:', err);
+        setError('Could not load dresses');
+        setLoading(false);
+      }
+    };
+
+    fetchDresses();
+  }, []);
+
   return (
     <div className="home">
       {/* Reusable Navbar */}
@@ -105,110 +135,53 @@ export default function Home() {
             <button className="filter-btn">Party</button>
           </div>
 
-          <div className="dress-grid">
-            {/* Card 1 */}
-            <div className="dress-card glass-panel">
-              <div className="card-badge">Top rated</div>
-              <div className="media-wrapper">
-                <img 
-                  src="https://images.unsplash.com/photo-1583391733956-3750e0ff4e8b?w=500&q=80" 
-                  alt="Banarasi Saree" 
-                  className="card-img" 
-                />
-                <div className="card-info">
-                  <span className="dress-type">Saree</span>
-                  <h4 className="dress-name">Banarasi Silk</h4>
-                  <span className="dress-price">$29<span>/day</span></span>
-                </div>
-              </div>
-              <Link to="/booking/1" className="rent-btn-card">Rent Now</Link>
+          {/* Loading State */}
+          {loading && (
+            <div className="loading-state">
+              <div className="spinner"></div>
+              <p>Loading beautiful dresses...</p>
             </div>
-            {/* Card 2 */}
-            <div className="dress-card glass-panel">
-              <div className="card-badge">Festival</div>
-              <div className="media-wrapper">
-                <img 
-                  src="https://images.unsplash.com/photo-1617128077837-60a09f9596ae?w=500&q=80" 
-                  alt="Silk Kurta" 
-                  className="card-img" 
-                />
-                <div className="card-info">
-                  <span className="dress-type">Kurta</span>
-                  <h4 className="dress-name">Silk Kurta Set</h4>
-                  <span className="dress-price">$18<span>/day</span></span>
-                </div>
-              </div>
-              <Link to="/booking/2" className="rent-btn-card">Rent Now</Link>
+          )}
+
+          {/* Error State */}
+          {error && (
+            <div className="error-state">
+              <i className="ri-error-warning-line"></i>
+              <p>{error}</p>
             </div>
-            {/* Card 3 */}
-            <div className="dress-card glass-panel">
-              <div className="card-badge">Bridal</div>
-              <div className="media-wrapper">
-                <img 
-                  src="https://images.unsplash.com/photo-1588357716680-17909c80b91d?w=500&q=80" 
-                  alt="Lehenga Choli" 
-                  className="card-img" 
-                />
-                <div className="card-info">
-                  <span className="dress-type">Lehenga</span>
-                  <h4 className="dress-name">Festive Lehenga</h4>
-                  <span className="dress-price">$39<span>/day</span></span>
+          )}
+
+          {/* Dress Grid - REAL DRESSES FROM BACKEND */}
+          {!loading && !error && (
+            <div className="dress-grid">
+              {dresses.length > 0 ? (
+                dresses.map((dress) => (
+                  <div key={dress._id} className="dress-card glass-panel">
+                    <div className="card-badge">{dress.category}</div>
+                    <div className="media-wrapper">
+                      <img 
+                        src={dress.image || "https://images.unsplash.com/photo-1583391733956-3750e0ff4e8b?w=500&q=80"} 
+                        alt={dress.name}
+                        className="card-img" 
+                      />
+                      <div className="card-info">
+                        <span className="dress-type">{dress.category}</span>
+                        <h4 className="dress-name">{dress.name}</h4>
+                        <span className="dress-price">₹{dress.price}<span>/day</span></span>
+                      </div>
+                    </div>
+                    <Link to={`/booking/${dress._id}`} className="rent-btn-card">Rent Now</Link>
+                  </div>
+                ))
+              ) : (
+                <div className="empty-state">
+                  <i className="ri-inbox-line"></i>
+                  <h3>No dresses available</h3>
+                  <p>Check back later for new additions</p>
                 </div>
-              </div>
-              <Link to="/booking/3" className="rent-btn-card">Rent Now</Link>
+              )}
             </div>
-            {/* Card 4 */}
-            <div className="dress-card glass-panel">
-              <div className="card-badge">Wedding</div>
-              <div className="media-wrapper">
-                <img 
-                  src="https://images.unsplash.com/photo-1617137968427-85924d800a22?w=500&q=80" 
-                  alt="Sherwani" 
-                  className="card-img" 
-                />
-                <div className="card-info">
-                  <span className="dress-type">Sherwani</span>
-                  <h4 className="dress-name">Royal Sherwani</h4>
-                  <span className="dress-price">$45<span>/day</span></span>
-                </div>
-              </div>
-              <Link to="/booking/4" className="rent-btn-card">Rent Now</Link>
-            </div>
-            {/* Card 5 */}
-            <div className="dress-card glass-panel">
-              <div className="card-badge">Designer</div>
-              <div className="media-wrapper">
-                <img 
-                  src="https://images.unsplash.com/photo-1610197519343-3b2daafb5780?w=500&q=80" 
-                  alt="Anarkali" 
-                  className="card-img" 
-                />
-                <div className="card-info">
-                  <span className="dress-type">Anarkali</span>
-                  <h4 className="dress-name">Silk Anarkali</h4>
-                  <span className="dress-price">$32<span>/day</span></span>
-                </div>
-              </div>
-              <Link to="/booking/5" className="rent-btn-card">Rent Now</Link>
-            </div>
-            {/* Card 6 */}
-            <div className="dress-card glass-panel">
-              <div className="card-badge">Festive</div>
-              <div className="media-wrapper">
-                <img 
-                  src="https://images.unsplash.com/photo-1556906781-9a412961b4f8?w=500&q=80" 
-                  alt="Dhoti Kurta" 
-                  className="card-img" 
-                />
-                <div className="card-info">
-                  <span className="dress-type">Dhoti Set</span>
-                  <h4 className="dress-name">Classic Dhoti Kurta</h4>
-                  <span className="dress-price">$22<span>/day</span></span>
-                </div>
-              </div>
-              <Link to="/booking/6" className="rent-btn-card">Rent Now</Link>
-            </div>
-          </div>
+          )}
         </div>
       </section>
 

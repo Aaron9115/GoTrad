@@ -336,9 +336,9 @@ const Contact = () => {
           <div className="cta-content">
             <h2>Prefer to talk?</h2>
             <p>Call us directly and speak with our customer support team</p>
-            <a href="tel:+919876543210" className="btn-primary btn-large">
+            <a href="tel:+977 9800000000" className="btn-primary btn-large">
               <i className="ri-phone-line"></i>
-              +91 98765 43210
+              +977 9800000000
             </a>
           </div>
           <div className="cta-image">

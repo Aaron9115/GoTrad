@@ -4,13 +4,11 @@ import Home from "./pages/Home";
 import DressListing from "./pages/DressListing";
 import Booking from "./pages/Booking";
 import AIRecommendation from "./pages/AIRecommendation";
-import Contact from "./pages/Contact"; // Make sure this import is here
+import Contact from "./pages/Contact"; 
 import Login from "./components/Login"; 
 import Register from "./components/Register";
 import Profile from "./pages/Profile";
-// import MyBookings from "./pages/MyBookings"; // Create this later
-// import DressManagement from "./pages/DressManagement"; // Create this later
-// import AdminDashboard from "./pages/AdminDashboard"; // Create this later
+import OwnerDashboard from "./pages/OwnerDashboard";
 
 // Protected Route Component
 const ProtectedRoute = ({ children, allowedRoles = [] }) => {
@@ -37,7 +35,7 @@ function App() {
         <Route path="/dresses" element={<DressListing />} />
         <Route path="/booking/:dressId" element={<Booking />} />
         <Route path="/ai-recommendation" element={<AIRecommendation />} />
-        <Route path="/contact" element={<Contact />} /> {/* This route is correct */}
+        <Route path="/contact" element={<Contact />} /> 
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
         
@@ -48,27 +46,11 @@ function App() {
           </ProtectedRoute>
         } />
         
-        {/* <Route path="/my-bookings" element={
-          <ProtectedRoute allowedRoles={['renter']}>
-            <MyBookings />
-          </ProtectedRoute>
-        /> */}
-
-        {/* Owner Routes */}
-        {/* <Route path="/owner/dresses" element={
-          <ProtectedRoute allowedRoles={['owner', 'admin']}>
-            <DressManagement />
-          </ProtectedRoute>
-        /> */}
-
-        {/* Admin Routes */}
-        {/* <Route path="/admin/dashboard" element={
-          <ProtectedRoute allowedRoles={['admin']}>
-            <AdminDashboard />
-          </ProtectedRoute>
-        /> */}
-
-        {/* Catch all - 404 redirect */}
+       <Route path="/owner/dashboard" element={
+        <ProtectedRoute allowedRoles={['owner', 'admin']}>
+       <OwnerDashboard />
+      </ProtectedRoute>
+      } />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Router>

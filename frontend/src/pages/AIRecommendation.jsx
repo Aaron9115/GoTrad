@@ -51,41 +51,6 @@ const AIRecommendation = () => {
     }
   ];
 
-  const testimonials = [
-    {
-      name: "Priya S.",
-      role: "Bride's Sister",
-      text: "The AI recommendation was spot on! Found the perfect lehenga for my sister's wedding.",
-      rating: 5,
-      avatar: "P",
-      location: "Mumbai"
-    },
-    {
-      name: "Rahul K.",
-      role: "Groom",
-      text: "Never knew what colors suited me best until I tried this. Game changer for my wedding!",
-      rating: 5,
-      avatar: "R",
-      location: "Delhi"
-    },
-    {
-      name: "Anjali M.",
-      role: "Festival Goer",
-      text: "Amazing experience! The color suggestions were perfect for Teej celebrations.",
-      rating: 5,
-      avatar: "A",
-      location: "Kathmandu"
-    },
-    {
-      name: "Sneha P.",
-      role: "Fashion Enthusiast",
-      text: "I've tried many color analysis tools, but this AI is by far the most accurate!",
-      rating: 5,
-      avatar: "S",
-      location: "Bangalore"
-    }
-  ];
-
   const howItWorks = [
     {
       step: 1,
@@ -157,7 +122,7 @@ const AIRecommendation = () => {
           setFlaskStatus('online');
           console.log('✅ Flask backend connected via OPTIONS');
         } catch (err2) {
-          console.log('❌ Flask backend offline - will use mock data');
+          console.log('❌ Flask backend offline');
           setFlaskStatus('offline');
         }
       }
@@ -165,7 +130,7 @@ const AIRecommendation = () => {
     
     const checkNodeBackend = async () => {
       try {
-        const response = await fetch('/api/browse', {
+        const response = await fetch('http://localhost:5000/api/browse', {
           signal: AbortSignal.timeout(2000)
         });
         if (response.ok) {
@@ -183,8 +148,6 @@ const AIRecommendation = () => {
     checkFlaskBackend();
     checkNodeBackend();
   }, []);
-
-  // Tip rotation removed - keeping static tips
 
   useEffect(() => {
     return () => {
@@ -299,6 +262,38 @@ const AIRecommendation = () => {
     startCamera();
   };
 
+  // Fetch real dresses from database based on skin tone
+  const fetchRecommendedDresses = async (skinToneValue) => {
+    try {
+      const response = await fetch('http://localhost:5000/api/browse');
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch dresses');
+      }
+      
+      const data = await response.json();
+      
+      // Transform the data to match frontend structure
+      const transformedDresses = data.map(dress => ({
+        _id: dress._id,
+        name: dress.name,
+        category: dress.category,
+        size: dress.size,
+        color: dress.color,
+        pricePerDay: dress.price,
+        image: dress.image || "https://images.unsplash.com/photo-1583391733956-3750e0ff4e8b?w=600&q=80",
+        available: dress.available
+      }));
+      
+      setRecommendedDresses(transformedDresses);
+      
+    } catch (err) {
+      console.error('Error fetching dresses:', err);
+      setError('Could not load recommended dresses');
+      setRecommendedDresses([]);
+    }
+  };
+
   const analyzeSkinTone = async () => {
     if (!window.capturedImageBlob) {
       setError("No image captured");
@@ -306,6 +301,7 @@ const AIRecommendation = () => {
     }
 
     setLoading(true);
+    setError(null);
     
     try {
       const formData = new FormData();
@@ -323,79 +319,17 @@ const AIRecommendation = () => {
         setSkinTone(data.skin_tone);
         setFlaskStatus('online');
         
-        if (nodeStatus === 'online') {
-          try {
-            const dressResponse = await fetch(`/api/dresses?skinTone=${data.skin_tone}`);
-            if (dressResponse.ok) {
-              const dressData = await dressResponse.json();
-              setRecommendedDresses(dressData);
-            } else {
-              useMockDresses();
-            }
-          } catch (err) {
-            useMockDresses();
-          }
-        } else {
-          useMockDresses();
-        }
+        // Fetch real dresses from database
+        await fetchRecommendedDresses(data.skin_tone);
+        setStep(3);
       } else {
         throw new Error("Flask returned error");
       }
     } catch (err) {
       console.error("Flask backend error:", err);
+      setError("AI analysis failed. Please try again.");
       setFlaskStatus('offline');
-      useMockAnalysis();
-    }
-    
-    function useMockAnalysis() {
-      setTimeout(() => {
-        const tones = ["Light", "Medium", "Dark"];
-        const randomTone = tones[Math.floor(Math.random() * tones.length)];
-        setSkinTone(randomTone);
-        useMockDresses();
-      }, 2000);
-    }
-    
-    function useMockDresses() {
-      setRecommendedDresses([
-        {
-          _id: "1",
-          name: "Royal Silk Lehenga",
-          category: "Wedding",
-          size: "M",
-          color: "Red",
-          pricePerDay: 2500,
-          image: "https://images.unsplash.com/photo-1583391733956-3750e0ff4e8b?w=600&q=80"
-        },
-        {
-          _id: "2",
-          name: "Festive Saree",
-          category: "Festival",
-          size: "L",
-          color: "Green",
-          pricePerDay: 1800,
-          image: "https://images.unsplash.com/photo-1588357716680-17909c80b91d?w=600&q=80"
-        },
-        {
-          _id: "3",
-          name: "Contemporary Gown",
-          category: "Party",
-          size: "S",
-          color: "Blue",
-          pricePerDay: 2200,
-          image: "https://images.unsplash.com/photo-1585487000160-6ebcfceb0d03?w=600&q=80"
-        },
-        {
-          _id: "4",
-          name: "Designer Anarkali",
-          category: "Wedding",
-          size: "M",
-          color: "Maroon",
-          pricePerDay: 3200,
-          image: "https://images.unsplash.com/photo-1610197519343-3b2daafb5780?w=600&q=80"
-        }
-      ]);
-      setStep(3);
+    } finally {
       setLoading(false);
     }
   };
@@ -406,29 +340,25 @@ const AIRecommendation = () => {
         return {
           gradient: "linear-gradient(135deg, #f5e6d3, #e6d5b8)",
           description: "Light skin tones look stunning in jewel tones like emerald green, sapphire blue, and rich purples.",
-          recommendedColors: ["Emerald Green", "Sapphire Blue", "Rich Purple", "Rose Pink", "Terracotta"],
-          celebrities: ["Deepika Padukone", "Alia Bhatt", "Kareena Kapoor"]
+          recommendedColors: ["Emerald Green", "Sapphire Blue", "Rich Purple", "Rose Pink", "Terracotta"]
         };
       case "medium":
         return {
           gradient: "linear-gradient(135deg, #d9b99b, #c4a484)",
           description: "Medium skin tones glow in warm colors like burnt orange, mustard yellow, and coral.",
-          recommendedColors: ["Burnt Orange", "Mustard Yellow", "Coral", "Teal", "Burgundy"],
-          celebrities: ["Priyanka Chopra", "Katrina Kaif", "Anushka Sharma"]
+          recommendedColors: ["Burnt Orange", "Mustard Yellow", "Coral", "Teal", "Burgundy"]
         };
       case "dark":
         return {
           gradient: "linear-gradient(135deg, #8d5524, #6b3e1a)",
           description: "Dark skin tones radiate in vibrant colors like fuchsia, electric blue, and emerald green.",
-          recommendedColors: ["Fuchsia", "Electric Blue", "Emerald Green", "Gold", "Silver"],
-          celebrities: ["Nayanthara", "Tamannaah", "Kajol"]
+          recommendedColors: ["Fuchsia", "Electric Blue", "Emerald Green", "Gold", "Silver"]
         };
       default:
         return {
           gradient: "linear-gradient(135deg, #e0e0e0, #c0c0c0)",
           description: "Every skin tone has its unique beauty.",
-          recommendedColors: ["Explore Collection"],
-          celebrities: ["You're unique!"]
+          recommendedColors: ["Explore Collection"]
         };
     }
   };
@@ -460,14 +390,48 @@ const AIRecommendation = () => {
           <h1>AI Skin Tone <span className="gradient-text">Recommendation</span></h1>
           <p>Discover the perfect dress colors that complement your unique skin tone</p>
           
-          {/* Server Status Indicators */}
-          <div className="server-status">
-            <div className={`status-badge ${flaskStatus === 'online' ? 'online' : 'offline'}`}>
-              <span className="status-dot"></span>
+          {/* Server Status Indicators - Now centered */}
+          <div style={{
+            display: 'flex',
+            justifyContent: 'center',
+            gap: '20px',
+            marginTop: '15px',
+            fontSize: '0.85rem'
+          }}>
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '5px',
+              padding: '5px 10px',
+              background: flaskStatus === 'online' ? '#10b98120' : '#ef444420',
+              borderRadius: '20px',
+              color: flaskStatus === 'online' ? '#10b981' : '#ef4444'
+            }}>
+              <span style={{
+                width: '8px',
+                height: '8px',
+                borderRadius: '50%',
+                background: flaskStatus === 'online' ? '#10b981' : '#ef4444',
+                display: 'inline-block'
+              }}></span>
               AI Model: {flaskStatus === 'online' ? 'Connected' : 'Offline'}
             </div>
-            <div className={`status-badge ${nodeStatus === 'online' ? 'online' : 'offline'}`}>
-              <span className="status-dot"></span>
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '5px',
+              padding: '5px 10px',
+              background: nodeStatus === 'online' ? '#10b98120' : '#ef444420',
+              borderRadius: '20px',
+              color: nodeStatus === 'online' ? '#10b981' : '#ef4444'
+            }}>
+              <span style={{
+                width: '8px',
+                height: '8px',
+                borderRadius: '50%',
+                background: nodeStatus === 'online' ? '#10b981' : '#ef4444',
+                display: 'inline-block'
+              }}></span>
               Database: {nodeStatus === 'online' ? 'Connected' : 'Offline'}
             </div>
           </div>
@@ -513,14 +477,9 @@ const AIRecommendation = () => {
                 <i className="ri-camera-line"></i>
                 Start Camera
               </button>
-
-              <div className="demo-video-hint">
-                <i className="ri-play-circle-line"></i>
-                <span>Watch how it works (30 sec)</span>
-              </div>
             </div>
 
-            {/* How It Works - Timeline */}
+           
             <div className="how-it-works">
               <h3>How It Works</h3>
               <div className="steps-timeline">
@@ -566,35 +525,6 @@ const AIRecommendation = () => {
               <div className="stat-item">
                 <span className="stat-number">100+</span>
                 <span className="stat-label">Dress Styles</span>
-              </div>
-            </div>
-
-            {/* Testimonials */}
-            <div className="testimonials-section">
-              <h3>What Our Users Say</h3>
-              <div className="testimonials-grid">
-                {testimonials.map((testimonial, index) => (
-                  <div key={index} className="testimonial-card glass-panel">
-                    <div className="testimonial-stars">
-                      {[...Array(testimonial.rating)].map((_, i) => (
-                        <i key={i} className="ri-star-fill"></i>
-                      ))}
-                    </div>
-                    <p className="testimonial-text">"{testimonial.text}"</p>
-                    <div className="testimonial-user">
-                      <div className="user-avatar">
-                        {testimonial.avatar}
-                      </div>
-                      <div className="user-info">
-                        <strong>{testimonial.name}</strong>
-                        <span>
-                          <i className="ri-map-pin-line"></i> {testimonial.location}
-                        </span>
-                        <small>{testimonial.role}</small>
-                      </div>
-                    </div>
-                  </div>
-                ))}
               </div>
             </div>
 
@@ -784,25 +714,12 @@ const AIRecommendation = () => {
                 <div className="skin-tone-details">
                   <h2>Your Skin Tone: <span className="gradient-text">{skinTone}</span></h2>
                   <p className="skin-tone-description">{toneInfo.description}</p>
-                  
-                  {/* Celebrity Match */}
-                  <div className="celebrity-match">
-                    <h4><i className="ri-star-line"></i> You have similar tone as:</h4>
-                    <div className="celebrity-list">
-                      {toneInfo.celebrities.map((celeb, index) => (
-                        <span key={index} className="celebrity-tag">
-                          <i className="ri-user-star-line"></i>
-                          {celeb}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
                 </div>
               </div>
 
-              {/* Color Palette */}
+              {/* Color Palette - Just colors, no celebrity matches */}
               <div className="color-palette-section">
-                <h3>Your Perfect Color Palette</h3>
+                <h3>Colors that suit you</h3>
                 <div className="color-palette">
                   {toneInfo.recommendedColors.map((color, index) => (
                     <div key={index} className="palette-item">
@@ -830,7 +747,7 @@ const AIRecommendation = () => {
               </div>
             </div>
 
-            {/* Recommended Dresses */}
+            {/* Recommended Dresses - REAL DRESSES FROM DATABASE */}
             <div className="recommended-dresses">
               <div className="section-header-with-action">
                 <h2>Recommended for You</h2>
@@ -839,39 +756,46 @@ const AIRecommendation = () => {
                 </Link>
               </div>
               
-              <div className="dress-results grid">
-                {recommendedDresses.map((dress) => (
-                  <Link to={`/booking/${dress._id}`} key={dress._id} className="dress-item-link">
-                    <div className="dress-card">
-                      <div className="dress-image-wrapper">
-                        <img 
-                          src={dress.image} 
-                          alt={dress.name}
-                          className="dress-image"
-                        />
-                        <div className="dress-type-badge">
-                          <i className="ri-magic-line"></i>
-                          <span>Perfect Match</span>
+              {recommendedDresses.length === 0 ? (
+                <div className="empty-state">
+                  <i className="ri-inbox-line"></i>
+                  <h3>No dresses available</h3>
+                  <p>Check back later for new additions</p>
+                  <Link to="/dresses" className="btn-primary">
+                    Browse All Dresses
+                  </Link>
+                </div>
+              ) : (
+                <div className="dress-results grid">
+                  {recommendedDresses.map((dress) => (
+                    <Link to={`/booking/${dress._id}`} key={dress._id} className="dress-item-link">
+                      <div className="dress-card">
+                        <div className="dress-image-wrapper">
+                          <img 
+                            src={dress.image} 
+                            alt={dress.name}
+                            className="dress-image"
+                          />
+                          {!dress.available && (
+                            <div className="dress-badge unavailable">Rented</div>
+                          )}
                         </div>
-                        <div className="match-percentage">
-                          98% Match
-                        </div>
-                      </div>
-                      <div className="dress-info">
-                        <h3 className="dress-name">{dress.name}</h3>
-                        <p className="dress-category">{dress.category}</p>
-                        <div className="dress-details">
-                          <span className="dress-price">₹{dress.pricePerDay}<span>/day</span></span>
-                          <div className="dress-meta">
-                            <span className="dress-size">{dress.size}</span>
-                            <span className="dress-color" style={{ backgroundColor: dress.color.toLowerCase() }}></span>
+                        <div className="dress-info">
+                          <h3 className="dress-name">{dress.name}</h3>
+                          <p className="dress-category">{dress.category}</p>
+                          <div className="dress-details">
+                            <span className="dress-price">₹{dress.pricePerDay}<span>/day</span></span>
+                            <div className="dress-meta">
+                              <span className="dress-size">{dress.size}</span>
+                              <span className="dress-color" style={{ backgroundColor: dress.color?.toLowerCase() }}></span>
+                            </div>
                           </div>
                         </div>
                       </div>
-                    </div>
-                  </Link>
-                ))}
-              </div>
+                    </Link>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* Share Results */}
