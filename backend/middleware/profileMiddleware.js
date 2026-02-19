@@ -48,7 +48,7 @@ const imageFilter = (req, file, cb) => {
   }
 };
 
-// Configure multer for profile picture uploads
+// Multer configuration for profile picture uploads
 const uploadProfilePicture = multer({
   storage: profileStorage,
   limits: { 

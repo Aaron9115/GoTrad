@@ -61,6 +61,13 @@ app.use("/api", recommendRoutes);
 const profileRoutes = require("./routes/profileRoutes");
 app.use("/api/profile", profileRoutes);
 
+// Contact Routes
+const contactRoutes = require("./routes/contactRoutes");
+app.use("/api/contact", contactRoutes);
+
+
+
+
 // 404 handler for undefined routes
 app.use((req, res) => {
   res.status(404).json({ 
@@ -88,7 +95,7 @@ app.use((err, req, res, next) => {
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
-  console.log(`✅ Server running on port ${PORT}`);
-  console.log(`📍 Frontend URL: http://localhost:5173`);
-  console.log(`📍 API Base URL: http://localhost:${PORT}/api`);
+  console.log(` Server running on port ${PORT}`);
+  console.log(` Frontend URL: http://localhost:5173`);
+  console.log(` API Base URL: http://localhost:${PORT}/api`);
 });

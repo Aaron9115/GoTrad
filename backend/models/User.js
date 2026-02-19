@@ -20,7 +20,7 @@ const userSchema = new mongoose.Schema(
       enum: ["owner", "renter", "admin"],
       default: "renter"
     },
-    // New fields for profile - ADD THESE
+ 
     phone: {
       type: String,
       default: ""
