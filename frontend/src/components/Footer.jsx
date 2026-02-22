@@ -12,7 +12,6 @@ const Footer = () => {
           {/* Brand Column */}
           <div className="footer-brand">
             <div className="footer-logo">
-              <i className="ri-vip-crown-line"></i>
               <span>GoTrad</span>
             </div>
             <p className="footer-tagline">
@@ -52,11 +51,11 @@ const Footer = () => {
             <h5>Contact Us</h5>
             <p>
               <i className="ri-map-pin-line"></i>
-              <span>12 Heritage Lane, Andheri East, Mumbai 400069</span>
+              <span>Kathmandu</span>
             </p>
             <p>
               <i className="ri-phone-line"></i>
-              <span>+91 98765 43210</span>
+              <span>+977 98765 43210</span>
             </p>
             <p>
               <i className="ri-mail-line"></i>

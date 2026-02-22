@@ -9,6 +9,9 @@ import Login from "./components/Login";
 import Register from "./components/Register";
 import Profile from "./pages/Profile";
 import OwnerDashboard from "./pages/OwnerDashboard";
+import MyBookings from "./pages/MyBookings";
+import ReturnPage from "./pages/ReturnPage";
+import OwnerReturnReview from "./pages/OwnerReturnReview";
 
 // Protected Route Component
 const ProtectedRoute = ({ children, allowedRoles = [] }) => {
@@ -46,6 +49,27 @@ function App() {
           </ProtectedRoute>
         } />
         
+        
+
+        <Route path="/my-bookings" element={
+          <ProtectedRoute allowedRoles={['renter']}>
+            <MyBookings />
+           </ProtectedRoute>
+        } />
+
+        <Route path="/return/:bookingId" element={
+          <ProtectedRoute allowedRoles={['renter']}>
+            <ReturnPage />
+          </ProtectedRoute>
+        } />
+    
+        <Route path="/owner/return/:returnId" element={
+          <ProtectedRoute allowedRoles={['owner', 'admin']}>
+            <OwnerReturnReview />
+          </ProtectedRoute>
+        } />
+
+
        <Route path="/owner/dashboard" element={
         <ProtectedRoute allowedRoles={['owner', 'admin']}>
        <OwnerDashboard />

@@ -63,7 +63,7 @@ const Navbar = () => {
       case "admin":
         return "/admin/dashboard";
       case "owner":
-        return "/owner/dashboard"; // Changed from "/owner/dresses" to "/owner/dashboard"
+        return "/owner/dashboard";
       default:
         return "/profile";
     }
@@ -129,12 +129,18 @@ const Navbar = () => {
                     My Profile
                   </Link>
                   {user.role === 'renter' && (
-                    <Link to="/my-bookings" className="dropdown-item">
-                      <i className="ri-calendar-line"></i>
-                      My Bookings
-                    </Link>
+                    <>
+                      <Link to="/my-bookings" className="dropdown-item">
+                        <i className="ri-calendar-line"></i>
+                        My Bookings
+                      </Link>
+                      {/* ✅ ADDED: Returns link for renters */}
+                      <Link to="/my-bookings" className="dropdown-item">
+                        <i className="ri-upload-line"></i>
+                        Returns
+                      </Link>
+                    </>
                   )}
-                  {/* OWNER DASHBOARD LINK - ADDED HERE */}
                   {user.role === 'owner' && (
                     <Link to="/owner/dashboard" className="dropdown-item">
                       <i className="ri-store-line"></i>
@@ -267,12 +273,18 @@ const Navbar = () => {
               My Profile
             </Link>
             {user.role === 'renter' && (
-              <Link to="/my-bookings" className="mobile-nav-link" onClick={() => setMobileMenuOpen(false)}>
-                <i className="ri-calendar-line"></i>
-                My Bookings
-              </Link>
+              <>
+                <Link to="/my-bookings" className="mobile-nav-link" onClick={() => setMobileMenuOpen(false)}>
+                  <i className="ri-calendar-line"></i>
+                  My Bookings
+                </Link>
+                
+                <Link to="/my-bookings" className="mobile-nav-link" onClick={() => setMobileMenuOpen(false)}>
+                  <i className="ri-upload-line"></i>
+                  Returns
+                </Link>
+              </>
             )}
-            {/* OWNER DASHBOARD LINK IN MOBILE MENU */}
             {user.role === 'owner' && (
               <Link to="/owner/dashboard" className="mobile-nav-link" onClick={() => setMobileMenuOpen(false)}>
                 <i className="ri-store-line"></i>

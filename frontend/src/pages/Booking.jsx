@@ -18,18 +18,19 @@ const BookingPage = () => {
     days: 0,
     subtotal: 0,
     serviceFee: 0,
+    securityDeposit: 1000,
     total: 0
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [bookingSuccess, setBookingSuccess] = useState(false);
   const [user, setUser] = useState(null);
   const [dateError, setDateError] = useState("");
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
 
   // Check if user is logged in
   useEffect(() => {
     const token = localStorage.getItem("token");
     if (token) {
-      // You can decode token or fetch user data
       setUser({ token });
     }
   }, []);
@@ -39,14 +40,11 @@ const BookingPage = () => {
     const fetchDress = async () => {
       try {
         setLoading(true);
-        // Try to get specific dress by ID
         const response = await fetch(`/api/browse`);
         const data = await response.json();
-        // Find the specific dress by ID
         const foundDress = data.find(d => d._id === dressId);
         
         if (foundDress) {
-          // Transform to match frontend structure
           setDress({
             _id: foundDress._id,
             name: foundDress.name,
@@ -54,7 +52,7 @@ const BookingPage = () => {
             size: foundDress.size,
             color: foundDress.color,
             pricePerDay: foundDress.price,
-            description: `${foundDress.category} - ${foundDress.color} traditional dress`,
+            description: foundDress.description || `${foundDress.category} - ${foundDress.color} traditional dress`,
             images: [foundDress.image || "https://images.unsplash.com/photo-1583391733956-3750e0ff4e8b?w=600&q=80"],
             owner: foundDress.owner || { name: "Heritage Rental" },
             available: foundDress.available
@@ -62,10 +60,8 @@ const BookingPage = () => {
         } else {
           setError("Dress not found");
         }
-        setError(null);
       } catch (err) {
         console.error("Error fetching dress:", err);
-        // Fallback to mock data for demo
         setDress({
           _id: dressId,
           name: "Red Gunyu Cholo",
@@ -73,7 +69,7 @@ const BookingPage = () => {
           size: "M",
           color: "Red",
           pricePerDay: 2500,
-          description: "Traditional Nepali red Gunyu Cholo with gold embroidery, perfect for weddings and ceremonies.",
+          description: "Traditional Nepali red Gunyu Cholo with gold embroidery",
           images: ["https://images.unsplash.com/photo-1583391733956-3750e0ff4e8b?w=600&q=80"],
           owner: { name: "Himalayan Heritage" },
           available: true
@@ -94,24 +90,25 @@ const BookingPage = () => {
       const start = new Date(bookingData.startDate);
       const end = new Date(bookingData.endDate);
       
-      // Validate dates
       if (end < start) {
         setDateError("End date cannot be before start date");
         return;
       }
       
       const diffTime = Math.abs(end - start);
-      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1; // +1 to include both start and end days
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
       
-      if (diffDays > 0 && diffDays <= 30) { // Max 30 days rental
+      if (diffDays > 0 && diffDays <= 30) {
         const subtotal = dress.pricePerDay * diffDays;
-        const serviceFee = Math.round(subtotal * 0.05); // 5% service fee
-        const total = subtotal + serviceFee;
+        const serviceFee = Math.round(subtotal * 0.05);
+        const securityDeposit = 1000; // Fixed security deposit
+        const total = subtotal + serviceFee + securityDeposit;
         
         setPriceBreakdown({
           days: diffDays,
           subtotal,
           serviceFee,
+          securityDeposit,
           total
         });
         setDateError("");
@@ -121,7 +118,6 @@ const BookingPage = () => {
     }
   }, [bookingData.startDate, bookingData.endDate, dress]);
 
-  // Handle input changes
   const handleChange = (e) => {
     const { name, value } = e.target;
     setBookingData(prev => ({
@@ -130,17 +126,14 @@ const BookingPage = () => {
     }));
   };
 
-  // Get today's date for min date
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const minDate = today.toISOString().split('T')[0];
 
-  // Handle form submission
   const handleSubmit = async (e) => {
     e.preventDefault();
     
     if (!user) {
-      // Redirect to login if not logged in
       navigate("/login", { state: { from: `/booking/${dressId}` } });
       return;
     }
@@ -154,14 +147,18 @@ const BookingPage = () => {
       return;
     }
 
+    if (!agreedToTerms) {
+      setError("Please agree to the terms and conditions");
+      return;
+    }
+
     setIsSubmitting(true);
     setError(null);
 
     try {
-      // Get token from localStorage
       const token = localStorage.getItem("token");
       
-      const response = await fetch("/api/booking", {
+      const response = await fetch("http://localhost:5000/api/booking/create", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -170,7 +167,8 @@ const BookingPage = () => {
         body: JSON.stringify({
           dressId: dress._id,
           startDate: bookingData.startDate,
-          endDate: bookingData.endDate
+          endDate: bookingData.endDate,
+          securityDeposit: 1000
         })
       });
 
@@ -180,13 +178,8 @@ const BookingPage = () => {
         throw new Error(data.message || "Booking failed");
       }
 
-      // Booking successful
       setBookingSuccess(true);
-      
-      // Reset form
       setBookingData({ startDate: "", endDate: "" });
-      
-      // Scroll to top to show success message
       window.scrollTo({ top: 0, behavior: "smooth" });
 
     } catch (err) {
@@ -196,12 +189,10 @@ const BookingPage = () => {
     }
   };
 
-  // Handle view my bookings
   const viewMyBookings = () => {
     navigate("/my-bookings");
   };
 
-  // Handle continue shopping
   const continueShopping = () => {
     navigate("/dresses");
   };
@@ -240,14 +231,13 @@ const BookingPage = () => {
     <div className="booking-page">
       <Navbar />
 
-      {/* Success Message */}
       {bookingSuccess && (
         <div className="booking-success-banner">
           <div className="success-content">
             <i className="ri-checkbox-circle-line"></i>
             <div>
               <h3>Booking Confirmed!</h3>
-              <p>Your dress has been successfully booked. Check your email for details.</p>
+              <p>Your dress has been successfully booked. ₹1000 security deposit will be refunded upon return.</p>
             </div>
             <div className="success-actions">
               <button onClick={viewMyBookings} className="btn-outline">
@@ -338,10 +328,24 @@ const BookingPage = () => {
                 </div>
               )}
 
+              {/* Terms Agreement */}
+              <div className="terms-agreement">
+                <label className="checkbox-label">
+                  <input
+                    type="checkbox"
+                    checked={agreedToTerms}
+                    onChange={(e) => setAgreedToTerms(e.target.checked)}
+                  />
+                  <span>
+                    I agree to the <Link to="/terms">terms and conditions</Link>. I understand that ₹1000 security deposit will be refunded upon safe return of the dress.
+                  </span>
+                </label>
+              </div>
+
               <button
                 type="submit"
-                className={`btn-primary btn-large ${(!user || !dress.available || isSubmitting || dateError || !bookingData.startDate || !bookingData.endDate || bookingSuccess) ? "disabled" : ""}`}
-                disabled={!user || !dress.available || isSubmitting || dateError || !bookingData.startDate || !bookingData.endDate || bookingSuccess}
+                className={`btn-primary btn-large ${(!user || !dress.available || isSubmitting || dateError || !bookingData.startDate || !bookingData.endDate || bookingSuccess || !agreedToTerms) ? "disabled" : ""}`}
+                disabled={!user || !dress.available || isSubmitting || dateError || !bookingData.startDate || !bookingData.endDate || bookingSuccess || !agreedToTerms}
               >
                 {isSubmitting ? (
                   <>
@@ -351,7 +355,7 @@ const BookingPage = () => {
                 ) : (
                   <>
                     <i className="ri-check-line"></i>
-                    Confirm Booking
+                    Pay ₹{priceBreakdown.total} & Confirm
                   </>
                 )}
               </button>
@@ -360,7 +364,6 @@ const BookingPage = () => {
 
           {/* Right Column - Dress Summary & Price Breakdown */}
           <div className="booking-summary-section">
-            {/* Dress Summary Card */}
             <div className="dress-summary-card glass-panel">
               <h2>Your Selection</h2>
               
@@ -385,11 +388,10 @@ const BookingPage = () => {
 
               <div className="owner-info">
                 <i className="ri-user-line"></i>
-                <span>Rented by: {dress.owner.name}</span>
+                <span>Owner: {dress.owner.name}</span>
               </div>
             </div>
 
-            {/* Price Breakdown Card */}
             <div className="price-breakdown-card glass-panel">
               <h2>Price Details</h2>
               
@@ -407,11 +409,19 @@ const BookingPage = () => {
                     <span>Service Fee (5%)</span>
                     <span>₹{priceBreakdown.serviceFee}</span>
                   </div>
+                  <div className="price-row highlight">
+                    <span>Security Deposit (Refundable)</span>
+                    <span className="security-deposit">₹{priceBreakdown.securityDeposit}</span>
+                  </div>
                   <div className="price-divider"></div>
                   <div className="price-row total">
                     <span>Total Amount</span>
                     <span className="total-amount">₹{priceBreakdown.total}</span>
                   </div>
+                  <p className="deposit-note">
+                    <i className="ri-information-line"></i>
+                    Security deposit will be refunded within 5-7 days after return verification
+                  </p>
                 </>
               ) : (
                 <div className="no-dates-selected">
@@ -421,26 +431,14 @@ const BookingPage = () => {
               )}
             </div>
 
-            {/* Booking Policy Card */}
             <div className="policy-card glass-panel">
               <h3>Booking Policy</h3>
               <ul className="policy-list">
-                <li>
-                  <i className="ri-check-line"></i>
-                  <span>Free cancellation up to 48 hours before rental</span>
-                </li>
-                <li>
-                  <i className="ri-check-line"></i>
-                  <span>Professional dry cleaning included</span>
-                </li>
-                <li>
-                  <i className="ri-check-line"></i>
-                  <span>Free delivery within city limits</span>
-                </li>
-                <li>
-                  <i className="ri-check-line"></i>
-                  <span>Security deposit may apply</span>
-                </li>
+                <li><i className="ri-check-line"></i> Free cancellation up to 48 hours before rental</li>
+                <li><i className="ri-check-line"></i> Professional dry cleaning included</li>
+                <li><i className="ri-check-line"></i> Free delivery within city limits</li>
+                <li><i className="ri-check-line"></i> ₹1000 refundable security deposit</li>
+                <li><i className="ri-check-line"></i> Damage charges deducted from deposit</li>
               </ul>
             </div>
           </div>

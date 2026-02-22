@@ -67,12 +67,12 @@ const Contact = () => {
     {
       icon: "ri-map-pin-line",
       title: "Visit Us",
-      details: ["12 Heritage Lane", "Andheri East", "Mumbai 400069"]
+      details: ["Kathmandu, Nepal"],
     },
     {
       icon: "ri-phone-line",
       title: "Call Us",
-      details: ["+91 98765 43210", "+91 98765 43211"],
+      details: ["+977 98765 43210", "+977 98765 43211"],
       note: "Mon-Sat, 10am - 7pm"
     },
     {

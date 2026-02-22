@@ -656,3 +656,73 @@
     flex-direction: column;
   }
 }
+/* Add to your Booking.css file */
+
+/* Terms Agreement */
+.terms-agreement {
+  margin: 20px 0;
+  padding: 16px;
+  background: #f8fafc;
+  border-radius: 12px;
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  cursor: pointer;
+}
+
+.checkbox-label input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  margin-top: 2px;
+  accent-color: #0284c7;
+}
+
+.checkbox-label span {
+  color: #1f2937;
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+
+.checkbox-label a {
+  color: #0284c7;
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.checkbox-label a:hover {
+  text-decoration: underline;
+}
+
+/* Price Breakdown Highlights */
+.price-row.highlight {
+  background: #e0f2fe;
+  padding: 8px 12px;
+  border-radius: 8px;
+  margin: 8px 0;
+  font-weight: 500;
+}
+
+.security-deposit {
+  color: #059669;
+  font-weight: 600;
+}
+
+.deposit-note {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 12px;
+  padding: 10px;
+  background: #fef3c7;
+  border-radius: 8px;
+  color: #92400e;
+  font-size: 0.85rem;
+}
+
+.deposit-note i {
+  color: #f59e0b;
+  font-size: 1rem;
+}

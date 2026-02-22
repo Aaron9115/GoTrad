@@ -7,13 +7,15 @@ import "./OwnerDashboard.css";
 const OwnerDashboard = () => {
   const navigate = useNavigate();
   const [user, setUser] = useState(null);
-  const [activeTab, setActiveTab] = useState("my-dresses"); // my-dresses, add-dress
+  const [activeTab, setActiveTab] = useState("my-dresses"); // my-dresses, add-dress, returns
   const [dresses, setDresses] = useState([]);
+  const [pendingReturns, setPendingReturns] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [returnsLoading, setReturnsLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   
-  // Form state for adding new dress
+  // ========== DRESS MANAGEMENT STATE ==========
   const [formData, setFormData] = useState({
     name: "",
     size: "",
@@ -29,7 +31,7 @@ const OwnerDashboard = () => {
   const [editingDress, setEditingDress] = useState(null);
   const [showEditModal, setShowEditModal] = useState(false);
 
-  // Check if user is logged in and is owner
+  // ========== CHECK USER AUTHENTICATION ==========
   useEffect(() => {
     const userData = localStorage.getItem("user");
     if (!userData) {
@@ -45,9 +47,10 @@ const OwnerDashboard = () => {
 
     setUser(parsedUser);
     fetchMyDresses();
+    fetchPendingReturns();
   }, [navigate]);
 
-  // Fetch owner's dresses
+  // ========== FETCH OWNER'S DRESSES ==========
   const fetchMyDresses = async () => {
     try {
       setLoading(true);
@@ -72,7 +75,32 @@ const OwnerDashboard = () => {
     }
   };
 
-  // Handle form input change
+  // ========== FETCH PENDING RETURNS ==========
+  const fetchPendingReturns = async () => {
+    try {
+      setReturnsLoading(true);
+      const token = localStorage.getItem("token");
+      
+      const response = await fetch("http://localhost:5000/api/return/owner", {
+        headers: {
+          "Authorization": `Bearer ${token}`
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        // Filter only pending returns
+        const pending = data.filter(ret => ret.status === "pending" || ret.status === "under_review");
+        setPendingReturns(pending);
+      }
+    } catch (err) {
+      console.error("Error fetching returns:", err);
+    } finally {
+      setReturnsLoading(false);
+    }
+  };
+
+  // ========== HANDLE FORM INPUT CHANGE ==========
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData({
@@ -88,7 +116,7 @@ const OwnerDashboard = () => {
     }
   };
 
-  // Validate form
+  // ========== VALIDATE DRESS FORM ==========
   const validateForm = () => {
     const errors = {};
     
@@ -105,7 +133,7 @@ const OwnerDashboard = () => {
     return errors;
   };
 
-  // Handle add dress submit
+  // ========== HANDLE ADD DRESS SUBMIT ==========
   const handleSubmit = async (e) => {
     e.preventDefault();
     
@@ -164,7 +192,7 @@ const OwnerDashboard = () => {
     }
   };
 
-  // Handle delete dress
+  // ========== HANDLE DELETE DRESS ==========
   const handleDelete = async (dressId) => {
     if (!window.confirm("Are you sure you want to delete this dress?")) {
       return;
@@ -193,7 +221,7 @@ const OwnerDashboard = () => {
     }
   };
 
-  // Handle toggle availability
+  // ========== HANDLE TOGGLE AVAILABILITY ==========
   const handleToggleAvailability = async (dressId, currentStatus) => {
     try {
       const token = localStorage.getItem("token");
@@ -225,7 +253,7 @@ const OwnerDashboard = () => {
     }
   };
 
-  // Handle edit button click
+  // ========== HANDLE EDIT BUTTON CLICK ==========
   const handleEditClick = (dress) => {
     setEditingDress(dress);
     setFormData({
@@ -240,7 +268,7 @@ const OwnerDashboard = () => {
     setShowEditModal(true);
   };
 
-  // Handle update dress
+  // ========== HANDLE UPDATE DRESS ==========
   const handleUpdate = async (e) => {
     e.preventDefault();
     
@@ -285,9 +313,15 @@ const OwnerDashboard = () => {
     }
   };
 
-  // Format price with commas
+  // ========== FORMAT PRICE WITH COMMAS ==========
   const formatPrice = (price) => {
     return new Intl.NumberFormat("en-IN").format(price);
+  };
+
+  // ========== FORMAT DATE FOR DISPLAY ==========
+  const formatDate = (dateString) => {
+    const options = { year: 'numeric', month: 'short', day: 'numeric' };
+    return new Date(dateString).toLocaleDateString(undefined, options);
   };
 
   return (
@@ -295,11 +329,11 @@ const OwnerDashboard = () => {
       <Navbar />
       
       <div className="dashboard-container">
-        {/* Header */}
+        {/* ========== HEADER SECTION ========== */}
         <div className="dashboard-header">
           <div>
             <h1>Welcome, <span className="highlight">{user?.name}</span></h1>
-            <p className="dashboard-subtitle">Manage your dress collection</p>
+            <p className="dashboard-subtitle">Manage your dress collection and returns</p>
           </div>
           <div className="owner-badge">
             <i className="ri-store-line"></i>
@@ -307,7 +341,7 @@ const OwnerDashboard = () => {
           </div>
         </div>
 
-        {/* Success/Error Messages */}
+        {/* ========== SUCCESS/ERROR MESSAGES ========== */}
         {success && (
           <div className="success-message">
             <i className="ri-checkbox-circle-line"></i>
@@ -322,7 +356,7 @@ const OwnerDashboard = () => {
           </div>
         )}
 
-        {/* Dashboard Tabs */}
+        {/* ========== DASHBOARD TABS ========== */}
         <div className="dashboard-tabs">
           <button 
             className={`tab-btn ${activeTab === "my-dresses" ? "active" : ""}`}
@@ -338,9 +372,16 @@ const OwnerDashboard = () => {
             <i className="ri-add-circle-line"></i>
             Add New Dress
           </button>
+          <button 
+            className={`tab-btn ${activeTab === "returns" ? "active" : ""}`}
+            onClick={() => setActiveTab("returns")}
+          >
+            <i className="ri-arrow-return-line"></i>
+            Pending Returns ({pendingReturns.length})
+          </button>
         </div>
 
-        {/* MY DRESSES TAB */}
+        {/* ========== MY DRESSES TAB ========== */}
         {activeTab === "my-dresses" && (
           <div className="my-dresses-tab">
             {loading ? (
@@ -428,7 +469,7 @@ const OwnerDashboard = () => {
           </div>
         )}
 
-        {/* ADD DRESS TAB */}
+        {/* ========== ADD DRESS TAB ========== */}
         {activeTab === "add-dress" && (
           <div className="add-dress-tab">
             <div className="form-card">
@@ -612,7 +653,68 @@ const OwnerDashboard = () => {
           </div>
         )}
 
-        {/* Edit Modal */}
+        {/* ========== PENDING RETURNS TAB ========== */}
+        {activeTab === "returns" && (
+          <div className="returns-tab">
+            <h2 className="tab-heading">Pending Returns</h2>
+            {returnsLoading ? (
+              <div className="loading-state">
+                <div className="spinner"></div>
+                <p>Loading returns...</p>
+              </div>
+            ) : pendingReturns.length === 0 ? (
+              <div className="empty-state">
+                <i className="ri-arrow-return-line"></i>
+                <h3>No pending returns</h3>
+                <p>When renters return dresses, they'll appear here</p>
+              </div>
+            ) : (
+              <div className="returns-grid">
+                {pendingReturns.map((returnItem) => (
+                  <div key={returnItem._id} className="return-card">
+                    <div className="return-header">
+                      <h3>{returnItem.dress?.name || "Dress"}</h3>
+                      <span className={`return-status ${returnItem.status}`}>
+                        {returnItem.status}
+                      </span>
+                    </div>
+                    
+                    <div className="return-details">
+                      <p>
+                        <i className="ri-user-line"></i>
+                        <strong>Renter:</strong> {returnItem.renter?.name}
+                      </p>
+                      <p>
+                        <i className="ri-calendar-line"></i>
+                        <strong>Return Initiated:</strong> {formatDate(returnItem.returnInitiatedAt)}
+                      </p>
+                      <p>
+                        <i className="ri-camera-line"></i>
+                        <strong>Photos:</strong> {returnItem.photos?.length || 0} submitted
+                      </p>
+                      <p>
+                        <i className="ri-check-line"></i>
+                        <strong>Renter's Condition:</strong> {returnItem.renterAssessment?.condition}
+                      </p>
+                    </div>
+
+                    <div className="return-actions">
+                      <Link 
+                        to={`/owner/return/${returnItem._id}`}
+                        className="btn-primary"
+                      >
+                        <i className="ri-search-line"></i>
+                        Review Return
+                      </Link>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ========== EDIT DRESS MODAL ========== */}
         {showEditModal && (
           <div className="modal-overlay">
             <div className="modal-content">
