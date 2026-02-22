@@ -10,7 +10,7 @@ const app = express();
 
 // Middleware
 app.use(cors({
-  origin: 'http://localhost:5173', // Your frontend URL
+  origin: 'http://localhost:5173', // frontend URL
   credentials: true
 }));
 app.use(express.json());
@@ -27,11 +27,11 @@ const profilesDir = path.join(__dirname, 'uploads/profiles');
 
 if (!fs.existsSync(uploadsDir)) {
   fs.mkdirSync(uploadsDir);
-  console.log('✅ Created uploads directory');
+  console.log(' Created uploads directory');
 }
 if (!fs.existsSync(profilesDir)) {
   fs.mkdirSync(profilesDir, { recursive: true });
-  console.log('✅ Created uploads/profiles directory');
+  console.log(' Created uploads/profiles directory');
 }
 
 // Auth Routes
@@ -65,7 +65,9 @@ app.use("/api/profile", profileRoutes);
 const contactRoutes = require("./routes/contactRoutes");
 app.use("/api/contact", contactRoutes);
 
-
+// Return Routes
+const returnRoutes = require("./routes/returnRoutes");
+app.use("/api/return", returnRoutes);
 
 
 // 404 handler for undefined routes

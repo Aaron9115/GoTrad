@@ -33,7 +33,7 @@ const dressSchema = new mongoose.Schema(
     category: { 
       type: String, 
       required: true,
-      enum: ["Wedding", "Festival", "Party", "Traditional", "Modern"] 
+      //enum: ["Wedding", "Festival", "Party", "Traditional", "Modern"] 
     },
     
     // Price per day in rupees

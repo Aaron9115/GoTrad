@@ -16,7 +16,7 @@ const router = express.Router();
 router.get("/", getDresses);
 
 
-router.get("/my-dresses", protect, getMyDresses);  // ← MOVE THIS BEFORE /:id
+router.get("/my-dresses", protect, getMyDresses); 
 
 router.get("/:id", getDressById);  
 
