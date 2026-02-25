@@ -12,6 +12,7 @@ import OwnerDashboard from "./pages/OwnerDashboard";
 import MyBookings from "./pages/MyBookings";
 import ReturnPage from "./pages/ReturnPage";
 import OwnerReturnReview from "./pages/OwnerReturnReview";
+import VirtualTryOn from "./pages/VirtualTryOn";
 
 // Protected Route Component
 const ProtectedRoute = ({ children, allowedRoles = [] }) => {
@@ -41,7 +42,7 @@ function App() {
         <Route path="/contact" element={<Contact />} /> 
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
-        
+        <Route path="/virtual-tryon" element={<VirtualTryOn />} />
         {/* Protected Routes */}
         <Route path="/profile" element={
           <ProtectedRoute>
