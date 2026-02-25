@@ -69,6 +69,11 @@ app.use("/api/contact", contactRoutes);
 const returnRoutes = require("./routes/returnRoutes");
 app.use("/api/return", returnRoutes);
 
+//Virtual Try-On Routes
+const virtualTryOnRoutes = require("./routes/virtualTryOnRoutes");
+app.use("/api/virtual-tryon", virtualTryOnRoutes);
+
+
 
 // 404 handler for undefined routes
 app.use((req, res) => {
@@ -81,7 +86,10 @@ app.use((req, res) => {
       '/api/booking',
       '/api/review',
       '/api/recommend',
-      '/api/profile'
+      '/api/profile',
+      '/api/contact',
+      '/api/return',
+      '/api/virtual-tryon'
     ]
   });
 });
