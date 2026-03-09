@@ -234,10 +234,10 @@ const VirtualTryOn = () => {
       dressImg.src = dressSource === 'select' ? selectedDress?.image : uploadedDressPreview;
       dressImg.onload = () => {
         // Make dress FULL SCREEN width
-        const overlayWidth = canvas.width; // Full width
-        const overlayHeight = canvas.height * 0.7; // 70% of canvas height (from neck down)
-        const overlayX = 0; // Start from left edge
-        const overlayY = canvas.height * 0.3; // Start from 30% down (neck area)
+     const overlayWidth = canvas.width * 0.65;
+     const overlayHeight = canvas.height * 0.72;
+     const overlayX = (canvas.width - overlayWidth) / 2;
+     const overlayY = canvas.height * 0.34;
         
         // Draw with some transparency to blend
         context.globalAlpha = 0.9;
@@ -331,18 +331,52 @@ const VirtualTryOn = () => {
           <h1>Virtual <span className="gradient-text">Try-On</span></h1>
           <p>Position your face in the oval - dress will cover from neck down</p>
           
-          {/* Server Status Indicators */}
-          <div className="status-indicators">
-            <div className={`status-badge ${flaskStatus === 'online' ? 'online' : flaskStatus === 'model_missing' ? 'warning' : 'offline'}`}>
-              <span className="status-dot"></span>
+          {/* Server Status Indicators - Centered like AI Recommendation */}
+          <div style={{
+            display: 'flex',
+            justifyContent: 'center',
+            gap: '20px',
+            marginTop: '15px',
+            fontSize: '0.85rem'
+          }}>
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '5px',
+              padding: '5px 10px',
+              background: flaskStatus === 'online' ? '#10b98120' : flaskStatus === 'model_missing' ? '#f59e0b20' : '#ef444420',
+              borderRadius: '20px',
+              color: flaskStatus === 'online' ? '#10b981' : flaskStatus === 'model_missing' ? '#f59e0b' : '#ef4444'
+            }}>
+              <span style={{
+                width: '8px',
+                height: '8px',
+                borderRadius: '50%',
+                background: flaskStatus === 'online' ? '#10b981' : flaskStatus === 'model_missing' ? '#f59e0b' : '#ef4444',
+                display: 'inline-block'
+              }}></span>
               AI Model: {
                 flaskStatus === 'online' ? 'Connected' : 
                 flaskStatus === 'model_missing' ? 'Model Missing' : 
                 'Offline'
               }
             </div>
-            <div className={`status-badge ${nodeStatus === 'online' ? 'online' : 'offline'}`}>
-              <span className="status-dot"></span>
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '5px',
+              padding: '5px 10px',
+              background: nodeStatus === 'online' ? '#10b98120' : '#ef444420',
+              borderRadius: '20px',
+              color: nodeStatus === 'online' ? '#10b981' : '#ef4444'
+            }}>
+              <span style={{
+                width: '8px',
+                height: '8px',
+                borderRadius: '50%',
+                background: nodeStatus === 'online' ? '#10b981' : '#ef4444',
+                display: 'inline-block'
+              }}></span>
               Database: {nodeStatus === 'online' ? 'Connected' : 'Offline'}
             </div>
           </div>

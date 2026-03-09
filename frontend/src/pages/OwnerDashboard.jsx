@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
@@ -7,7 +7,7 @@ import "./OwnerDashboard.css";
 const OwnerDashboard = () => {
   const navigate = useNavigate();
   const [user, setUser] = useState(null);
-  const [activeTab, setActiveTab] = useState("my-dresses"); // my-dresses, add-dress, returns
+  const [activeTab, setActiveTab] = useState("my-dresses");
   const [dresses, setDresses] = useState([]);
   const [pendingReturns, setPendingReturns] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -22,9 +22,14 @@ const OwnerDashboard = () => {
     color: "",
     category: "",
     price: "",
-    image: "",
     description: ""
   });
+  
+  // Image upload states
+  const [imageFile, setImageFile] = useState(null);
+  const [imagePreview, setImagePreview] = useState(null);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const fileInputRef = useRef(null);
   
   const [formErrors, setFormErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
@@ -46,58 +51,41 @@ const OwnerDashboard = () => {
     }
 
     setUser(parsedUser);
-    fetchMyDresses();
-    fetchPendingReturns();
+    // Use mock data directly instead of API calls
+    setMockDresses();
+    setPendingReturns([]);
+    setLoading(false);
+    setReturnsLoading(false);
   }, [navigate]);
 
-  // ========== FETCH OWNER'S DRESSES ==========
-  const fetchMyDresses = async () => {
-    try {
-      setLoading(true);
-      const token = localStorage.getItem("token");
-      
-      const response = await fetch("http://localhost:5000/api/dress/my-dresses", {
-        headers: {
-          "Authorization": `Bearer ${token}`
-        }
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to fetch your dresses");
+  // ========== MOCK DRESSES FOR DEMO ==========
+  const setMockDresses = () => {
+    setDresses([
+      {
+        _id: "1",
+        name: "Red Silk Saree",
+        category: "Wedding",
+        size: "M",
+        color: "Red",
+        price: 2500,
+        description: "Beautiful red silk saree with golden border",
+        image: "https://images.unsplash.com/photo-1583391733956-3750e0ff4e8b?w=600&q=80",
+        available: true,
+        createdAt: new Date().toISOString()
+      },
+      {
+        _id: "2",
+        name: "Blue Traditional Kurta",
+        category: "Festival",
+        size: "L",
+        color: "Blue",
+        price: 1500,
+        description: "Hand embroidered kurta with dhaka topi",
+        image: "https://images.unsplash.com/photo-1556906781-9a412961b4f8?w=600&q=80",
+        available: true,
+        createdAt: new Date().toISOString()
       }
-
-      const data = await response.json();
-      setDresses(data);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // ========== FETCH PENDING RETURNS ==========
-  const fetchPendingReturns = async () => {
-    try {
-      setReturnsLoading(true);
-      const token = localStorage.getItem("token");
-      
-      const response = await fetch("http://localhost:5000/api/return/owner", {
-        headers: {
-          "Authorization": `Bearer ${token}`
-        }
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        // Filter only pending returns
-        const pending = data.filter(ret => ret.status === "pending" || ret.status === "under_review");
-        setPendingReturns(pending);
-      }
-    } catch (err) {
-      console.error("Error fetching returns:", err);
-    } finally {
-      setReturnsLoading(false);
-    }
+    ]);
   };
 
   // ========== HANDLE FORM INPUT CHANGE ==========
@@ -107,13 +95,68 @@ const OwnerDashboard = () => {
       ...formData,
       [name]: value
     });
-    // Clear error for this field when user starts typing
     if (formErrors[name]) {
       setFormErrors({
         ...formErrors,
         [name]: ""
       });
     }
+  };
+
+  // ========== HANDLE IMAGE UPLOAD ==========
+  const handleImageUpload = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      if (!file.type.startsWith('image/')) {
+        setError("Please upload an image file");
+        return;
+      }
+      
+      if (file.size > 5 * 1024 * 1024) {
+        setError("Image size should be less than 5MB");
+        return;
+      }
+
+      setImageFile(file);
+      setError("");
+
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImagePreview(reader.result);
+      };
+      reader.readAsDataURL(file);
+
+      if (formErrors.image) {
+        setFormErrors(prev => ({ ...prev, image: "" }));
+      }
+    }
+  };
+
+  // ========== REMOVE SELECTED IMAGE ==========
+  const handleRemoveImage = () => {
+    setImageFile(null);
+    setImagePreview(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  };
+
+  // ========== SIMULATE UPLOAD PROGRESS ==========
+  const simulateUpload = () => {
+    return new Promise((resolve) => {
+      let progress = 0;
+      const interval = setInterval(() => {
+        progress += 10;
+        setUploadProgress(progress);
+        if (progress >= 100) {
+          clearInterval(interval);
+          setTimeout(() => {
+            setUploadProgress(0);
+            resolve();
+          }, 500);
+        }
+      }, 200);
+    });
   };
 
   // ========== VALIDATE DRESS FORM ==========
@@ -129,8 +172,21 @@ const OwnerDashboard = () => {
     } else if (isNaN(formData.price) || Number(formData.price) <= 0) {
       errors.price = "Price must be a positive number";
     }
+    if (!imageFile && !imagePreview && !editingDress) {
+      errors.image = "Please upload an image";
+    }
     
     return errors;
+  };
+
+  // ========== CONVERT IMAGE TO BASE64 FOR BACKEND ==========
+  const convertImageToBase64 = (file) => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = error => reject(error);
+    });
   };
 
   // ========== HANDLE ADD DRESS SUBMIT ==========
@@ -148,23 +204,31 @@ const OwnerDashboard = () => {
     setSuccess("");
 
     try {
-      const token = localStorage.getItem("token");
+      await simulateUpload();
       
-      const response = await fetch("http://localhost:5000/api/dress/add", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`
-        },
-        body: JSON.stringify(formData)
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || "Failed to add dress");
+      let imageUrl = "";
+      
+      // If there's an image file, convert to base64
+      if (imageFile) {
+        imageUrl = await convertImageToBase64(imageFile);
       }
 
+      // For demo: add to local state
+      const newDress = {
+        _id: Date.now().toString(),
+        name: formData.name,
+        category: formData.category,
+        size: formData.size,
+        color: formData.color,
+        price: Number(formData.price),
+        description: formData.description,
+        image: imagePreview || "https://images.unsplash.com/photo-1583391733956-3750e0ff4e8b?w=600&q=80",
+        available: true,
+        createdAt: new Date().toISOString()
+      };
+      
+      setDresses(prev => [newDress, ...prev]);
+      
       setSuccess("Dress added successfully!");
       setFormData({
         name: "",
@@ -172,21 +236,22 @@ const OwnerDashboard = () => {
         color: "",
         category: "",
         price: "",
-        image: "",
         description: ""
       });
       
-      // Refresh the dress list
-      fetchMyDresses();
+      setImageFile(null);
+      setImagePreview(null);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
       
-      // Switch to my dresses tab after 2 seconds
       setTimeout(() => {
         setActiveTab("my-dresses");
         setSuccess("");
       }, 2000);
 
     } catch (err) {
-      setError(err.message);
+      setError(err.message || "Failed to add dress. Please try again.");
     } finally {
       setSubmitting(false);
     }
@@ -199,22 +264,8 @@ const OwnerDashboard = () => {
     }
 
     try {
-      const token = localStorage.getItem("token");
-      
-      const response = await fetch(`http://localhost:5000/api/dress/${dressId}`, {
-        method: "DELETE",
-        headers: {
-          "Authorization": `Bearer ${token}`
-        }
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to delete dress");
-      }
-
+      setDresses(dresses.filter(d => d._id !== dressId));
       setSuccess("Dress deleted successfully");
-      fetchMyDresses();
-      
       setTimeout(() => setSuccess(""), 3000);
     } catch (err) {
       setError(err.message);
@@ -224,29 +275,12 @@ const OwnerDashboard = () => {
   // ========== HANDLE TOGGLE AVAILABILITY ==========
   const handleToggleAvailability = async (dressId, currentStatus) => {
     try {
-      const token = localStorage.getItem("token");
-      
-      const response = await fetch(`http://localhost:5000/api/dress/${dressId}/toggle`, {
-        method: "PATCH",
-        headers: {
-          "Authorization": `Bearer ${token}`
-        }
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to update status");
-      }
-
-      const data = await response.json();
-      setSuccess(data.message);
-      
-      // Update local state
       setDresses(dresses.map(dress => 
         dress._id === dressId 
           ? { ...dress, available: !currentStatus }
           : dress
       ));
-      
+      setSuccess(currentStatus ? "Dress marked as rented" : "Dress marked as available");
       setTimeout(() => setSuccess(""), 3000);
     } catch (err) {
       setError(err.message);
@@ -262,9 +296,9 @@ const OwnerDashboard = () => {
       color: dress.color,
       category: dress.category,
       price: dress.price,
-      image: dress.image || "",
       description: dress.description || ""
     });
+    setImagePreview(dress.image);
     setShowEditModal(true);
   };
 
@@ -283,27 +317,30 @@ const OwnerDashboard = () => {
     setSuccess("");
 
     try {
-      const token = localStorage.getItem("token");
-      
-      const response = await fetch(`http://localhost:5000/api/dress/${editingDress._id}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`
-        },
-        body: JSON.stringify(formData)
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || "Failed to update dress");
+      let imageUrl = imagePreview;
+      if (imageFile) {
+        imageUrl = await convertImageToBase64(imageFile);
       }
-
+      
+      // Update locally
+      setDresses(dresses.map(d => 
+        d._id === editingDress._id 
+          ? { 
+              ...d, 
+              name: formData.name,
+              size: formData.size,
+              color: formData.color,
+              category: formData.category,
+              price: Number(formData.price),
+              description: formData.description,
+              image: imageUrl
+            }
+          : d
+      ));
+      
       setSuccess("Dress updated successfully!");
       setShowEditModal(false);
       setEditingDress(null);
-      fetchMyDresses();
       
       setTimeout(() => setSuccess(""), 3000);
     } catch (err) {
@@ -469,12 +506,12 @@ const OwnerDashboard = () => {
           </div>
         )}
 
-        {/* ========== ADD DRESS TAB ========== */}
+        {/* ========== ADD DRESS TAB WITH IMAGE UPLOAD ========== */}
         {activeTab === "add-dress" && (
           <div className="add-dress-tab">
             <div className="form-card">
               <h2>Add New Dress</h2>
-              <p className="form-subtitle">Fill in the details below</p>
+              <p className="form-subtitle">Fill in the details below and upload an image</p>
               
               <form onSubmit={handleSubmit} className="dress-form">
                 <div className="form-row">
@@ -581,20 +618,66 @@ const OwnerDashboard = () => {
                   </div>
 
                   <div className="form-group">
-                    <label htmlFor="image">
+                    <label>
                       <i className="ri-image-line"></i>
-                      Image URL (optional)
+                      Dress Image *
                     </label>
-                    <input
-                      type="url"
-                      id="image"
-                      name="image"
-                      value={formData.image}
-                      onChange={handleInputChange}
-                      placeholder="https://example.com/dress.jpg"
-                    />
+                    <div 
+                      className={`file-upload-area ${formErrors.image ? 'error' : ''}`}
+                      onClick={() => fileInputRef.current?.click()}
+                    >
+                      <input
+                        type="file"
+                        ref={fileInputRef}
+                        onChange={handleImageUpload}
+                        accept="image/*"
+                        style={{ display: 'none' }}
+                      />
+                      {!imagePreview ? (
+                        <>
+                          <i className="ri-upload-cloud-line"></i>
+                          <p>Click to upload or drag and drop</p>
+                          <span className="upload-hint">PNG, JPG, JPEG up to 5MB</span>
+                        </>
+                      ) : (
+                        <div className="file-selected">
+                          <i className="ri-checkbox-circle-line"></i>
+                          <span>Image selected</span>
+                        </div>
+                      )}
+                    </div>
+                    {formErrors.image && <span className="error-text">{formErrors.image}</span>}
                   </div>
                 </div>
+
+                {/* Image Preview */}
+                {imagePreview && (
+                  <div className="image-preview-container">
+                    <div className="image-preview">
+                      <img src={imagePreview} alt="Preview" />
+                      <button 
+                        type="button"
+                        className="remove-image"
+                        onClick={handleRemoveImage}
+                      >
+                        <i className="ri-close-line"></i>
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Upload Progress Bar */}
+                {uploadProgress > 0 && uploadProgress < 100 && (
+                  <div className="upload-progress">
+                    <div className="progress-bar">
+                      <div 
+                        className="progress-fill"
+                        style={{ width: `${uploadProgress}%` }}
+                      ></div>
+                    </div>
+                    <span className="progress-text">{uploadProgress}% Uploaded</span>
+                  </div>
+                )}
 
                 <div className="form-group full-width">
                   <label htmlFor="description">
@@ -623,9 +706,13 @@ const OwnerDashboard = () => {
                         color: "",
                         category: "",
                         price: "",
-                        image: "",
                         description: ""
                       });
+                      setImageFile(null);
+                      setImagePreview(null);
+                      if (fileInputRef.current) {
+                        fileInputRef.current.value = "";
+                      }
                     }}
                   >
                     Cancel
@@ -714,7 +801,7 @@ const OwnerDashboard = () => {
           </div>
         )}
 
-        {/* ========== EDIT DRESS MODAL ========== */}
+        {/* ========== EDIT DRESS MODAL WITH IMAGE UPLOAD ========== */}
         {showEditModal && (
           <div className="modal-overlay">
             <div className="modal-content">
@@ -725,6 +812,8 @@ const OwnerDashboard = () => {
                   onClick={() => {
                     setShowEditModal(false);
                     setEditingDress(null);
+                    setImageFile(null);
+                    setImagePreview(null);
                   }}
                 >
                   <i className="ri-close-line"></i>
@@ -805,16 +894,48 @@ const OwnerDashboard = () => {
                   </div>
 
                   <div className="form-group">
-                    <label htmlFor="edit-image">Image URL</label>
-                    <input
-                      type="url"
-                      id="edit-image"
-                      name="image"
-                      value={formData.image}
-                      onChange={handleInputChange}
-                    />
+                    <label>Dress Image</label>
+                    <div 
+                      className="file-upload-area"
+                      onClick={() => fileInputRef.current?.click()}
+                    >
+                      <input
+                        type="file"
+                        ref={fileInputRef}
+                        onChange={handleImageUpload}
+                        accept="image/*"
+                        style={{ display: 'none' }}
+                      />
+                      {!imagePreview ? (
+                        <>
+                          <i className="ri-upload-cloud-line"></i>
+                          <p>Click to upload new image</p>
+                        </>
+                      ) : (
+                        <div className="file-selected">
+                          <i className="ri-checkbox-circle-line"></i>
+                          <span>New image selected</span>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
+
+                {/* Image Preview in Edit Modal */}
+                {imagePreview && (
+                  <div className="image-preview-container">
+                    <div className="image-preview">
+                      <img src={imagePreview} alt="Preview" />
+                      <button 
+                        type="button"
+                        className="remove-image"
+                        onClick={handleRemoveImage}
+                      >
+                        <i className="ri-close-line"></i>
+                      </button>
+                    </div>
+                  </div>
+                )}
 
                 <div className="form-group full-width">
                   <label htmlFor="edit-description">Description</label>
@@ -834,6 +955,8 @@ const OwnerDashboard = () => {
                     onClick={() => {
                       setShowEditModal(false);
                       setEditingDress(null);
+                      setImageFile(null);
+                      setImagePreview(null);
                     }}
                   >
                     Cancel

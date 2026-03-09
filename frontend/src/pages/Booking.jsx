@@ -26,63 +26,114 @@ const BookingPage = () => {
   const [user, setUser] = useState(null);
   const [dateError, setDateError] = useState("");
   const [agreedToTerms, setAgreedToTerms] = useState(false);
+  const [backendStatus, setBackendStatus] = useState('checking');
+
+  // Check if backend is running
+  useEffect(() => {
+    const checkBackend = async () => {
+      try {
+        const response = await fetch('http://localhost:5000/api/browse', {
+          method: 'HEAD',
+          signal: AbortSignal.timeout(2000)
+        });
+        setBackendStatus('online');
+        console.log('✅ Backend is running');
+      } catch (err) {
+        setBackendStatus('offline');
+        console.log('❌ Backend is offline');
+      }
+    };
+    checkBackend();
+  }, []);
 
   // Check if user is logged in
   useEffect(() => {
     const token = localStorage.getItem("token");
-    if (token) {
-      setUser({ token });
+    const userData = localStorage.getItem("user");
+    if (token && userData) {
+      setUser(JSON.parse(userData));
     }
   }, []);
 
-  // Fetch dress details
+  // Fetch dress details by ID
   useEffect(() => {
-    const fetchDress = async () => {
+    const fetchDressById = async () => {
       try {
         setLoading(true);
-        const response = await fetch(`/api/browse`);
-        const data = await response.json();
-        const foundDress = data.find(d => d._id === dressId);
+        setError(null);
         
-        if (foundDress) {
-          setDress({
-            _id: foundDress._id,
-            name: foundDress.name,
-            category: foundDress.category,
-            size: foundDress.size,
-            color: foundDress.color,
-            pricePerDay: foundDress.price,
-            description: foundDress.description || `${foundDress.category} - ${foundDress.color} traditional dress`,
-            images: [foundDress.image || "https://images.unsplash.com/photo-1583391733956-3750e0ff4e8b?w=600&q=80"],
-            owner: foundDress.owner || { name: "Heritage Rental" },
-            available: foundDress.available
-          });
+        console.log(`Fetching dress with ID: ${dressId}`);
+        
+        // Try to fetch from backend first
+        if (backendStatus === 'online') {
+          // First try to get all dresses and find by ID
+          const response = await fetch(`http://localhost:5000/api/browse`);
+          
+          if (!response.ok) {
+            throw new Error(`Server responded with status: ${response.status}`);
+          }
+
+          const data = await response.json();
+          console.log('Received all dresses:', data);
+          
+          // Find the dress with matching ID
+          const foundDress = data.find(d => d._id === dressId);
+          
+          if (foundDress) {
+            console.log('Found dress:', foundDress);
+            setDress({
+              _id: foundDress._id,
+              name: foundDress.name,
+              category: foundDress.category,
+              size: foundDress.size,
+              color: foundDress.color,
+              pricePerDay: foundDress.price,
+              description: foundDress.description || `${foundDress.category} - ${foundDress.color} traditional dress`,
+              images: [foundDress.image || "https://images.unsplash.com/photo-1583391733956-3750e0ff4e8b?w=600&q=80"],
+              owner: foundDress.owner || { name: "Heritage Rental" },
+              available: foundDress.available !== undefined ? foundDress.available : true
+            });
+          } else {
+            // Try to fetch single dress if endpoint exists
+            try {
+              const singleResponse = await fetch(`http://localhost:5000/api/dress/${dressId}`);
+              if (singleResponse.ok) {
+                const singleDress = await singleResponse.json();
+                setDress({
+                  _id: singleDress._id,
+                  name: singleDress.name,
+                  category: singleDress.category,
+                  size: singleDress.size,
+                  color: singleDress.color,
+                  pricePerDay: singleDress.price,
+                  description: singleDress.description,
+                  images: [singleDress.image || "https://images.unsplash.com/photo-1583391733956-3750e0ff4e8b?w=600&q=80"],
+                  owner: singleDress.owner || { name: "Heritage Rental" },
+                  available: singleDress.available
+                });
+              } else {
+                setError("Dress not found in database");
+              }
+            } catch (err) {
+              setError("Dress not found in database");
+            }
+          }
         } else {
-          setError("Dress not found");
+          // Backend offline - show error instead of mock data
+          setError("Cannot connect to server. Please make sure backend is running.");
         }
       } catch (err) {
         console.error("Error fetching dress:", err);
-        setDress({
-          _id: dressId,
-          name: "Red Gunyu Cholo",
-          category: "Wedding",
-          size: "M",
-          color: "Red",
-          pricePerDay: 2500,
-          description: "Traditional Nepali red Gunyu Cholo with gold embroidery",
-          images: ["https://images.unsplash.com/photo-1583391733956-3750e0ff4e8b?w=600&q=80"],
-          owner: { name: "Himalayan Heritage" },
-          available: true
-        });
+        setError(err.message || "Failed to load dress details");
       } finally {
         setLoading(false);
       }
     };
 
-    if (dressId) {
-      fetchDress();
+    if (dressId && backendStatus !== 'checking') {
+      fetchDressById();
     }
-  }, [dressId]);
+  }, [dressId, backendStatus]);
 
   // Calculate price when dates change
   useEffect(() => {
@@ -101,7 +152,7 @@ const BookingPage = () => {
       if (diffDays > 0 && diffDays <= 30) {
         const subtotal = dress.pricePerDay * diffDays;
         const serviceFee = Math.round(subtotal * 0.05);
-        const securityDeposit = 1000; // Fixed security deposit
+        const securityDeposit = 1000;
         const total = subtotal + serviceFee + securityDeposit;
         
         setPriceBreakdown({
@@ -210,6 +261,23 @@ const BookingPage = () => {
     );
   }
 
+  if (!dress && !loading && error) {
+    return (
+      <div className="booking-page">
+        <Navbar />
+        <div className="error-state">
+          <i className="ri-error-warning-line"></i>
+          <h3>Error Loading Dress</h3>
+          <p>{error}</p>
+          <Link to="/dresses" className="btn-primary">
+            Browse Collection
+          </Link>
+        </div>
+        <Footer />
+      </div>
+    );
+  }
+
   if (!dress && !loading) {
     return (
       <div className="booking-page">
@@ -262,6 +330,13 @@ const BookingPage = () => {
           <div className="booking-form-section glass-panel">
             <h2>Rental Details</h2>
             
+            {backendStatus === 'offline' && (
+              <div className="backend-offline-warning">
+                <i className="ri-server-line"></i>
+                <p>Backend server not running. Please start the server to book.</p>
+              </div>
+            )}
+
             {!user && (
               <div className="login-warning glass-panel">
                 <i className="ri-information-line"></i>
@@ -286,7 +361,7 @@ const BookingPage = () => {
                   onChange={handleChange}
                   min={minDate}
                   required
-                  disabled={!user || !dress.available || bookingSuccess}
+                  disabled={!user || !dress.available || bookingSuccess || backendStatus === 'offline'}
                 />
               </div>
 
@@ -303,7 +378,7 @@ const BookingPage = () => {
                   onChange={handleChange}
                   min={bookingData.startDate || minDate}
                   required
-                  disabled={!user || !dress.available || bookingSuccess}
+                  disabled={!user || !dress.available || bookingSuccess || backendStatus === 'offline'}
                 />
               </div>
 
@@ -335,6 +410,7 @@ const BookingPage = () => {
                     type="checkbox"
                     checked={agreedToTerms}
                     onChange={(e) => setAgreedToTerms(e.target.checked)}
+                    disabled={backendStatus === 'offline'}
                   />
                   <span>
                     I agree to the <Link to="/terms">terms and conditions</Link>. I understand that ₹1000 security deposit will be refunded upon safe return of the dress.
@@ -344,8 +420,8 @@ const BookingPage = () => {
 
               <button
                 type="submit"
-                className={`btn-primary btn-large ${(!user || !dress.available || isSubmitting || dateError || !bookingData.startDate || !bookingData.endDate || bookingSuccess || !agreedToTerms) ? "disabled" : ""}`}
-                disabled={!user || !dress.available || isSubmitting || dateError || !bookingData.startDate || !bookingData.endDate || bookingSuccess || !agreedToTerms}
+                className={`btn-primary btn-large ${(!user || !dress.available || isSubmitting || dateError || !bookingData.startDate || !bookingData.endDate || bookingSuccess || !agreedToTerms || backendStatus === 'offline') ? "disabled" : ""}`}
+                disabled={!user || !dress.available || isSubmitting || dateError || !bookingData.startDate || !bookingData.endDate || bookingSuccess || !agreedToTerms || backendStatus === 'offline'}
               >
                 {isSubmitting ? (
                   <>
