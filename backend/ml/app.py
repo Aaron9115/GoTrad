@@ -25,10 +25,11 @@ skin_tone_model = tf.keras.models.load_model("skin_tone_model.h5")
 # Load virtual try-on model (if exists)
 try:
     viton_model = tf.keras.models.load_model("viton_cnn_model.h5")
-    print("✅ Virtual Try-On model loaded successfully")
+    print(" Virtual Try-On model loaded successfully")
+    
 except Exception as e:
     viton_model = None
-    print(f"⚠️ Virtual Try-On model not found: {e}")
+    print(f" Virtual Try-On model not found: {e}")
 
 # Skin tone settings
 IMG_SIZE = 64
@@ -117,8 +118,8 @@ def virtual_tryon():
         # Add batch dimension
         dress_img = np.expand_dims(dress_img, axis=0)
 
-        # ✅ FIX: Use only dress image (3 channels) not concatenated (6 channels)
-        # Your model was trained on 3-channel images
+        
+        # Model was trained on 3-channel images
         result = viton_model.predict(dress_img)
 
         # Convert result back to image format
@@ -134,7 +135,7 @@ def virtual_tryon():
         }), 200
 
     except Exception as e:
-        print(f"❌ Virtual Try-On error: {str(e)}")
+        print(f" Virtual Try-On error: {str(e)}")
         import traceback
         traceback.print_exc()
         return jsonify({"error": f"Virtual Try-On failed: {str(e)}"}), 500

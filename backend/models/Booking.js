@@ -28,19 +28,48 @@ const bookingSchema = new mongoose.Schema(
       required: true 
     },
     
+    // Delivery address
+    deliveryAddress: {
+      address: { type: String },
+      city: { type: String },
+      phone: { type: String }
+    },
+    
+    // Total amount paid
+    totalAmount: {
+      type: Number,
+      default: 0
+    },
+    
+    // Security deposit
+    securityDeposit: {
+      type: Number,
+      default: 1000
+    },
+    
     // Current status of the booking
     status: { 
       type: String, 
       enum: [
-        "booked",     // Dress is rented and currently with renter
+        "pending",    // Waiting for owner approval
+        "confirmed",  // Owner approved
+        "booked",     // Dress is rented and currently with renter (backward compatibility)
         "returning",  // Return process has been initiated (photos submitted)
         "returned",   // Dress has been returned and verified
+        "rejected",   // Owner rejected the booking
         "cancelled"   // Booking was cancelled
       ], 
-      default: "booked" 
+      default: "pending" 
     },
     
+    // Payment status
+    paymentStatus: {
+      type: String,
+      enum: ["pending", "paid", "refunded"],
+      default: "pending"
+    },
     
+    // Return information
     returnInfo: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Return"
@@ -51,15 +80,13 @@ const bookingSchema = new mongoose.Schema(
   }
 );
 
-
 bookingSchema.methods.isActive = function() {
-  return this.status === "booked" || this.status === "returning";
+  return this.status === "confirmed" || this.status === "booked" || this.status === "returning";
 };
-
 
 bookingSchema.methods.canBeCancelled = function() {
   const today = new Date();
-  return this.status === "booked" && this.startDate > today;
+  return (this.status === "pending" || this.status === "confirmed") && this.startDate > today;
 };
 
 module.exports = mongoose.model("Booking", bookingSchema);
