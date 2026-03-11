@@ -10,7 +10,7 @@ const MyBookings = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [cancelLoading, setCancelLoading] = useState(null);
-  const [activeTab, setActiveTab] = useState("all"); // all, active, past, cancelled
+  const [activeTab, setActiveTab] = useState("all");
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [selectedBooking, setSelectedBooking] = useState(null);
 
@@ -105,15 +105,19 @@ const MyBookings = () => {
     switch(activeTab) {
       case "active":
         return bookings.filter(b => 
-          b.status === "booked" && new Date(b.endDate) >= now
+          (b.status === "confirmed" || b.status === "booked") && new Date(b.endDate) >= now
         );
+      case "pending":
+        return bookings.filter(b => b.status === "pending");
       case "past":
         return bookings.filter(b => 
           b.status === "returned" || 
-          (b.status === "booked" && new Date(b.endDate) < now)
+          (b.status === "confirmed" && new Date(b.endDate) < now)
         );
       case "cancelled":
         return bookings.filter(b => b.status === "cancelled");
+      case "returned":
+        return bookings.filter(b => b.status === "returned");
       default:
         return bookings;
     }
@@ -145,11 +149,35 @@ const MyBookings = () => {
   // Get status badge class
   const getStatusClass = (status) => {
     switch(status) {
+      case "pending": return "status-pending";
+      case "confirmed": return "status-active";
       case "booked": return "status-active";
       case "returned": return "status-completed";
       case "cancelled": return "status-cancelled";
       default: return "";
     }
+  };
+
+  // Get status display text
+  const getStatusText = (status) => {
+    switch(status) {
+      case "pending": return "Awaiting Approval";
+      case "confirmed": return "Confirmed";
+      case "booked": return "Active";
+      case "returned": return "Returned";
+      case "cancelled": return "Cancelled";
+      default: return status;
+    }
+  };
+
+  // Check if booking is in return process
+  const isReturnInProgress = (booking) => {
+    return booking.returnStatus === "pending" || booking.returnStatus === "under_review";
+  };
+
+  // Check if return is resolved by owner
+  const isReturnResolved = (booking) => {
+    return booking.returnStatus === "resolved" || booking.returnStatus === "approved" || booking.returnStatus === "rejected";
   };
 
   if (loading) {
@@ -193,6 +221,12 @@ const MyBookings = () => {
             All ({bookings.length})
           </button>
           <button 
+            className={`tab-btn ${activeTab === "pending" ? "active" : ""}`}
+            onClick={() => setActiveTab("pending")}
+          >
+            Pending Approval
+          </button>
+          <button 
             className={`tab-btn ${activeTab === "active" ? "active" : ""}`}
             onClick={() => setActiveTab("active")}
           >
@@ -203,6 +237,12 @@ const MyBookings = () => {
             onClick={() => setActiveTab("past")}
           >
             Past
+          </button>
+          <button 
+            className={`tab-btn ${activeTab === "returned" ? "active" : ""}`}
+            onClick={() => setActiveTab("returned")}
+          >
+            Returned
           </button>
           <button 
             className={`tab-btn ${activeTab === "cancelled" ? "active" : ""}`}
@@ -226,11 +266,15 @@ const MyBookings = () => {
           <div className="bookings-list">
             {filteredBookings.map((booking) => {
               const priceDetails = calculateTotal(booking);
-              // Show cancel button for all booked dresses
-              const canCancel = booking.status === "booked";
-              // Show return button for booked dresses where end date has passed
-              //const canReturn = booking.status === "booked" && new Date(booking.endDate) <= new Date();
-              const canReturn = booking.status === "booked";
+              // Show cancel button for pending or confirmed bookings
+              const canCancel = booking.status === "pending" || booking.status === "confirmed" || booking.status === "booked";
+              // Show return button for confirmed bookings after rental period
+              const canReturn = (booking.status === "confirmed" || booking.status === "booked") && new Date(booking.endDate) <= new Date() && !isReturnInProgress(booking) && !isReturnResolved(booking);
+              // Show return in progress badge
+              const returnInProgress = isReturnInProgress(booking);
+              // Show return resolved details
+              const returnResolved = isReturnResolved(booking);
+              
               return (
                 <div key={booking._id} className="booking-card glass-panel">
                   {/* Dress Image */}
@@ -249,9 +293,23 @@ const MyBookings = () => {
                         <p className="dress-category">{booking.dress?.category}</p>
                       </div>
                       <span className={`booking-status ${getStatusClass(booking.status)}`}>
-                        {booking.status}
+                        {getStatusText(booking.status)}
                       </span>
                     </div>
+
+                    {/* Delivery Info - Show for confirmed bookings */}
+                    {(booking.status === "confirmed" || booking.status === "booked") && booking.deliveryAddress && (
+                      <div className="delivery-info">
+                        <div className="info-item">
+                          <i className="ri-map-pin-line"></i>
+                          <span>{booking.deliveryAddress.address}, {booking.deliveryAddress.city}</span>
+                        </div>
+                        <div className="info-item">
+                          <i className="ri-phone-line"></i>
+                          <span>{booking.deliveryAddress.phone}</span>
+                        </div>
+                      </div>
+                    )}
 
                     <div className="booking-dates">
                       <div className="date-item">
@@ -305,13 +363,94 @@ const MyBookings = () => {
                       </div>
                     </div>
 
+                    {/* Pending Approval Notice */}
+                    {booking.status === "pending" && (
+                      <div className="pending-approval">
+                        <i className="ri-time-line"></i>
+                        <span>Awaiting owner confirmation. You'll be notified once confirmed.</span>
+                      </div>
+                    )}
+
+                    {/* ========== RETURN RESOLUTION SECTION ========== */}
+                    {returnResolved && booking.returnResolution && (
+                      <div className="return-resolution-section">
+                        <h4 className="resolution-title">
+                          <i className="ri-checkbox-circle-line"></i>
+                          Return Resolution
+                        </h4>
+                        
+                        <div className="resolution-details">
+                          <div className="resolution-row">
+                            <span className="resolution-label">Owner Condition:</span>
+                            <span className="resolution-value">{booking.returnResolution.ownerCondition || "Good"}</span>
+                          </div>
+                          
+                          <div className="resolution-row">
+                            <span className="resolution-label">Return Method:</span>
+                            <span className="resolution-value">{booking.returnResolution.returnMethod || "Courier"}</span>
+                          </div>
+                          
+                          {booking.returnResolution.returnAddress && (
+                            <div className="resolution-row">
+                              <span className="resolution-label">Return Address:</span>
+                              <span className="resolution-value">{booking.returnResolution.returnAddress}</span>
+                            </div>
+                          )}
+                          
+                          {booking.returnResolution.ownerNotes && (
+                            <div className="resolution-row">
+                              <span className="resolution-label">Owner Notes:</span>
+                              <span className="resolution-value">{booking.returnResolution.ownerNotes}</span>
+                            </div>
+                          )}
+                          
+                          <div className="resolution-divider"></div>
+                          
+                          <div className="resolution-row highlight">
+                            <span className="resolution-label">Security Deposit:</span>
+                            <span className="resolution-value">₹{booking.returnResolution.securityDeposit || 1000}</span>
+                          </div>
+                          
+                          <div className="resolution-row">
+                            <span className="resolution-label">Deduction:</span>
+                            <span className="resolution-value deduction">- ₹{booking.returnResolution.deduction || 0}</span>
+                          </div>
+                          
+                          <div className="resolution-row total">
+                            <span className="resolution-label">Refund Amount:</span>
+                            <span className="resolution-value refund">₹{booking.returnResolution.refundAmount || 1000}</span>
+                          </div>
+                          
+                          <div className="resolution-badge">
+                            {booking.returnResolution.resolution === "full_refund" ? (
+                              <span className="badge-full">✅ Full Refund</span>
+                            ) : booking.returnResolution.resolution === "partial_refund" ? (
+                              <span className="badge-partial">⚠️ Partial Refund</span>
+                            ) : booking.returnResolution.resolution === "no_refund" ? (
+                              <span className="badge-none">❌ No Refund</span>
+                            ) : (
+                              <span className="badge-full">✅ Full Refund</span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Return In Progress Badge */}
+                    {returnInProgress && (
+                      <div className="return-in-progress">
+                        <i className="ri-timer-line"></i>
+                        <span>Return in progress - Awaiting owner review</span>
+                      </div>
+                    )}
+
                     {/* Action Buttons */}
                     <div className="booking-actions">
                       <Link to={`/dress/${booking.dress?._id}`} className="btn-outline-small">
                         <i className="ri-eye-line"></i> View Dress
                       </Link>
                       
-                      {/* Cancel Button - for all booked dresses */}
+                      {/* Cancel Button - for pending or confirmed bookings */}
                       {canCancel && (
                         <button 
                           className="btn-cancel"
@@ -331,13 +470,23 @@ const MyBookings = () => {
                         </button>
                       )}
 
-                      {/* ✅ RETURN BUTTON - This links to the Return Page where users upload photos */}
+                      {/* Return Button - Only show after rental period */}
                       {canReturn && (
                         <Link 
                           to={`/return/${booking._id}`} 
                           className="btn-return"
                         >
                           <i className="ri-upload-line"></i> Return Dress
+                        </Link>
+                      )}
+
+                      {/* View Return Status Button - for returns in progress */}
+                      {returnInProgress && (
+                        <Link 
+                          to={`/return-status/${booking._id}`} 
+                          className="btn-view-return"
+                        >
+                          <i className="ri-file-list-line"></i> View Return Status
                         </Link>
                       )}
                     </div>
@@ -371,7 +520,9 @@ const MyBookings = () => {
 
               <p className="warning-text">
                 <i className="ri-information-line"></i>
-                Cancellation is free up to 48 hours before the rental starts.
+                {selectedBooking.status === "pending" 
+                  ? "Cancellation is free at this stage." 
+                  : "Cancellation may incur charges if within 48 hours of rental start."}
               </p>
             </div>
 

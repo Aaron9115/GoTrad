@@ -12,7 +12,10 @@ const BookingPage = () => {
   const [error, setError] = useState(null);
   const [bookingData, setBookingData] = useState({
     startDate: "",
-    endDate: ""
+    endDate: "",
+    address: "",
+    city: "",
+    phone: ""
   });
   const [priceBreakdown, setPriceBreakdown] = useState({
     days: 0,
@@ -37,10 +40,10 @@ const BookingPage = () => {
           signal: AbortSignal.timeout(2000)
         });
         setBackendStatus('online');
-        console.log('✅ Backend is running');
+        console.log(' Backend is running');
       } catch (err) {
         setBackendStatus('offline');
-        console.log('❌ Backend is offline');
+        console.log(' Backend is offline');
       }
     };
     checkBackend();
@@ -51,7 +54,12 @@ const BookingPage = () => {
     const token = localStorage.getItem("token");
     const userData = localStorage.getItem("user");
     if (token && userData) {
-      setUser(JSON.parse(userData));
+      const parsedUser = JSON.parse(userData);
+      setUser(parsedUser);
+      // Pre-fill phone if available in user data
+      if (parsedUser.phone) {
+        setBookingData(prev => ({ ...prev, phone: parsedUser.phone }));
+      }
     }
   }, []);
 
@@ -198,6 +206,24 @@ const BookingPage = () => {
       return;
     }
 
+    // Validate address fields
+    if (!bookingData.address.trim()) {
+      setError("Please enter your delivery address");
+      return;
+    }
+    if (!bookingData.city.trim()) {
+      setError("Please enter your city");
+      return;
+    }
+    if (!bookingData.phone.trim()) {
+      setError("Please enter your phone number");
+      return;
+    }
+    if (!/^\d{10}$/.test(bookingData.phone.replace(/\D/g, ''))) {
+      setError("Please enter a valid 10-digit phone number");
+      return;
+    }
+
     if (!agreedToTerms) {
       setError("Please agree to the terms and conditions");
       return;
@@ -219,7 +245,11 @@ const BookingPage = () => {
           dressId: dress._id,
           startDate: bookingData.startDate,
           endDate: bookingData.endDate,
-          securityDeposit: 1000
+          address: bookingData.address,
+          city: bookingData.city,
+          phone: bookingData.phone,
+          securityDeposit: 1000,
+          totalAmount: priceBreakdown.total
         })
       });
 
@@ -230,7 +260,14 @@ const BookingPage = () => {
       }
 
       setBookingSuccess(true);
-      setBookingData({ startDate: "", endDate: "" });
+      // Reset only date and address fields, keep phone for next time
+      setBookingData(prev => ({ 
+        startDate: "", 
+        endDate: "",
+        address: "",
+        city: "",
+        phone: prev.phone // Keep phone for next time
+      }));
       window.scrollTo({ top: 0, behavior: "smooth" });
 
     } catch (err) {
@@ -304,8 +341,8 @@ const BookingPage = () => {
           <div className="success-content">
             <i className="ri-checkbox-circle-line"></i>
             <div>
-              <h3>Booking Confirmed!</h3>
-              <p>Your dress has been successfully booked. ₹1000 security deposit will be refunded upon return.</p>
+              <h3>Booking Request Sent!</h3>
+              <p>Your booking request has been sent to the owner. You'll be notified once they confirm.</p>
             </div>
             <div className="success-actions">
               <button onClick={viewMyBookings} className="btn-outline">
@@ -348,10 +385,11 @@ const BookingPage = () => {
             )}
 
             <form onSubmit={handleSubmit}>
+              {/* Date Selection */}
               <div className="form-group">
                 <label htmlFor="startDate">
                   <i className="ri-calendar-line"></i>
-                  Start Date
+                  Start Date *
                 </label>
                 <input
                   type="date"
@@ -368,7 +406,7 @@ const BookingPage = () => {
               <div className="form-group">
                 <label htmlFor="endDate">
                   <i className="ri-calendar-line"></i>
-                  End Date
+                  End Date *
                 </label>
                 <input
                   type="date"
@@ -388,6 +426,60 @@ const BookingPage = () => {
                   {dateError}
                 </div>
               )}
+
+              {/* Delivery Address */}
+              <div className="form-group">
+                <label htmlFor="address">
+                  <i className="ri-map-pin-line"></i>
+                  Delivery Address *
+                </label>
+                <input
+                  type="text"
+                  id="address"
+                  name="address"
+                  value={bookingData.address}
+                  onChange={handleChange}
+                  placeholder="Street address, apartment, etc."
+                  required
+                  disabled={!user || !dress.available || bookingSuccess || backendStatus === 'offline'}
+                />
+              </div>
+
+              <div className="form-row">
+                <div className="form-group half">
+                  <label htmlFor="city">
+                    <i className="ri-building-line"></i>
+                    City *
+                  </label>
+                  <input
+                    type="text"
+                    id="city"
+                    name="city"
+                    value={bookingData.city}
+                    onChange={handleChange}
+                    placeholder="Your city"
+                    required
+                    disabled={!user || !dress.available || bookingSuccess || backendStatus === 'offline'}
+                  />
+                </div>
+
+                <div className="form-group half">
+                  <label htmlFor="phone">
+                    <i className="ri-phone-line"></i>
+                    Phone Number *
+                  </label>
+                  <input
+                    type="tel"
+                    id="phone"
+                    name="phone"
+                    value={bookingData.phone}
+                    onChange={handleChange}
+                    placeholder="10-digit mobile number"
+                    required
+                    disabled={!user || !dress.available || bookingSuccess || backendStatus === 'offline'}
+                  />
+                </div>
+              </div>
 
               {error && (
                 <div className="error-message">
@@ -420,8 +512,8 @@ const BookingPage = () => {
 
               <button
                 type="submit"
-                className={`btn-primary btn-large ${(!user || !dress.available || isSubmitting || dateError || !bookingData.startDate || !bookingData.endDate || bookingSuccess || !agreedToTerms || backendStatus === 'offline') ? "disabled" : ""}`}
-                disabled={!user || !dress.available || isSubmitting || dateError || !bookingData.startDate || !bookingData.endDate || bookingSuccess || !agreedToTerms || backendStatus === 'offline'}
+                className={`btn-primary btn-large ${(!user || !dress.available || isSubmitting || dateError || !bookingData.startDate || !bookingData.endDate || !bookingData.address || !bookingData.city || !bookingData.phone || bookingSuccess || !agreedToTerms || backendStatus === 'offline') ? "disabled" : ""}`}
+                disabled={!user || !dress.available || isSubmitting || dateError || !bookingData.startDate || !bookingData.endDate || !bookingData.address || !bookingData.city || !bookingData.phone || bookingSuccess || !agreedToTerms || backendStatus === 'offline'}
               >
                 {isSubmitting ? (
                   <>
@@ -431,7 +523,7 @@ const BookingPage = () => {
                 ) : (
                   <>
                     <i className="ri-check-line"></i>
-                    Pay ₹{priceBreakdown.total} & Confirm
+                    Send Booking Request
                   </>
                 )}
               </button>
@@ -510,6 +602,7 @@ const BookingPage = () => {
             <div className="policy-card glass-panel">
               <h3>Booking Policy</h3>
               <ul className="policy-list">
+                <li><i className="ri-check-line"></i> Owner will confirm your booking within 24 hours</li>
                 <li><i className="ri-check-line"></i> Free cancellation up to 48 hours before rental</li>
                 <li><i className="ri-check-line"></i> Professional dry cleaning included</li>
                 <li><i className="ri-check-line"></i> Free delivery within city limits</li>

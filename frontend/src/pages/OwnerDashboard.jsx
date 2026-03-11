@@ -9,8 +9,10 @@ const OwnerDashboard = () => {
   const [user, setUser] = useState(null);
   const [activeTab, setActiveTab] = useState("my-dresses");
   const [dresses, setDresses] = useState([]);
+  const [pendingBookings, setPendingBookings] = useState([]);
   const [pendingReturns, setPendingReturns] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [bookingsLoading, setBookingsLoading] = useState(false);
   const [returnsLoading, setReturnsLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
@@ -35,57 +37,195 @@ const OwnerDashboard = () => {
   const [submitting, setSubmitting] = useState(false);
   const [editingDress, setEditingDress] = useState(null);
   const [showEditModal, setShowEditModal] = useState(false);
+  
+  // Booking confirmation state
+  const [processingBooking, setProcessingBooking] = useState(null);
 
   // ========== CHECK USER AUTHENTICATION ==========
   useEffect(() => {
     const userData = localStorage.getItem("user");
-    if (!userData) {
+    const token = localStorage.getItem("token");
+    
+    if (!userData || !token) {
       navigate("/login");
       return;
     }
 
-    const parsedUser = JSON.parse(userData);
-    if (parsedUser.role !== "owner" && parsedUser.role !== "admin") {
-      navigate("/");
+    try {
+      const parsedUser = JSON.parse(userData);
+      if (parsedUser.role !== "owner" && parsedUser.role !== "admin") {
+        navigate("/");
+        return;
+      }
+
+      setUser(parsedUser);
+      fetchMyDresses();
+      fetchPendingBookings();
+      fetchPendingReturns();
+    } catch (err) {
+      console.error("Error parsing user data:", err);
+      navigate("/login");
+    }
+  }, [navigate]);
+
+  // ========== FETCH OWNER'S DRESSES FROM BACKEND ==========
+  const fetchMyDresses = async () => {
+    try {
+      setLoading(true);
+      const token = localStorage.getItem("token");
+      
+      const response = await fetch("http://localhost:5000/api/dress/my-dresses", {
+        headers: {
+          "Authorization": `Bearer ${token}`
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch your dresses");
+      }
+
+      const data = await response.json();
+      setDresses(data);
+      setError("");
+    } catch (err) {
+      console.error("Error fetching dresses:", err);
+      setError(err.message);
+      setDresses([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // ========== FETCH PENDING BOOKINGS ==========
+  const fetchPendingBookings = async () => {
+    try {
+      setBookingsLoading(true);
+      const token = localStorage.getItem("token");
+      
+      const response = await fetch("http://localhost:5000/api/booking/owner/pending", {
+        headers: {
+          "Authorization": `Bearer ${token}`
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setPendingBookings(data);
+      } else {
+        setPendingBookings([]);
+      }
+    } catch (err) {
+      console.error("Error fetching pending bookings:", err);
+      setPendingBookings([]);
+    } finally {
+      setBookingsLoading(false);
+    }
+  };
+
+  // ========== FETCH PENDING RETURNS FROM BACKEND ==========
+  const fetchPendingReturns = async () => {
+    try {
+      setReturnsLoading(true);
+      const token = localStorage.getItem("token");
+      
+      const response = await fetch("http://localhost:5000/api/return/owner", {
+        headers: {
+          "Authorization": `Bearer ${token}`
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        const pending = data.filter(ret => ret.status === "pending" || ret.status === "under_review");
+        setPendingReturns(pending);
+      } else {
+        setPendingReturns([]);
+      }
+    } catch (err) {
+      console.error("Error fetching returns:", err);
+      setPendingReturns([]);
+    } finally {
+      setReturnsLoading(false);
+    }
+  };
+
+  // ========== HANDLE CONFIRM BOOKING ==========
+  const handleConfirmBooking = async (bookingId) => {
+    setProcessingBooking(bookingId);
+    setError("");
+    setSuccess("");
+
+    try {
+      const token = localStorage.getItem("token");
+      
+      const response = await fetch(`http://localhost:5000/api/booking/confirm/${bookingId}`, {
+        method: "PUT",
+        headers: {
+          "Authorization": `Bearer ${token}`
+        }
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || "Failed to confirm booking");
+      }
+
+      setSuccess("Booking confirmed successfully!");
+      
+      // Refresh pending bookings
+      await fetchPendingBookings();
+      
+      // Also refresh dresses in case availability changed
+      await fetchMyDresses();
+      
+      setTimeout(() => setSuccess(""), 3000);
+
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setProcessingBooking(null);
+    }
+  };
+
+  // ========== HANDLE REJECT BOOKING ==========
+  const handleRejectBooking = async (bookingId) => {
+    if (!window.confirm("Are you sure you want to reject this booking?")) {
       return;
     }
 
-    setUser(parsedUser);
-    // Use mock data directly instead of API calls
-    setMockDresses();
-    setPendingReturns([]);
-    setLoading(false);
-    setReturnsLoading(false);
-  }, [navigate]);
+    setProcessingBooking(bookingId);
+    setError("");
+    setSuccess("");
 
-  // ========== MOCK DRESSES FOR DEMO ==========
-  const setMockDresses = () => {
-    setDresses([
-      {
-        _id: "1",
-        name: "Red Silk Saree",
-        category: "Wedding",
-        size: "M",
-        color: "Red",
-        price: 2500,
-        description: "Beautiful red silk saree with golden border",
-        image: "https://images.unsplash.com/photo-1583391733956-3750e0ff4e8b?w=600&q=80",
-        available: true,
-        createdAt: new Date().toISOString()
-      },
-      {
-        _id: "2",
-        name: "Blue Traditional Kurta",
-        category: "Festival",
-        size: "L",
-        color: "Blue",
-        price: 1500,
-        description: "Hand embroidered kurta with dhaka topi",
-        image: "https://images.unsplash.com/photo-1556906781-9a412961b4f8?w=600&q=80",
-        available: true,
-        createdAt: new Date().toISOString()
+    try {
+      const token = localStorage.getItem("token");
+      
+      const response = await fetch(`http://localhost:5000/api/booking/reject/${bookingId}`, {
+        method: "PUT",
+        headers: {
+          "Authorization": `Bearer ${token}`
+        }
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || "Failed to reject booking");
       }
-    ]);
+
+      setSuccess("Booking rejected");
+      
+      // Refresh pending bookings
+      await fetchPendingBookings();
+      
+      setTimeout(() => setSuccess(""), 3000);
+
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setProcessingBooking(null);
+    }
   };
 
   // ========== HANDLE FORM INPUT CHANGE ==========
@@ -159,6 +299,51 @@ const OwnerDashboard = () => {
     });
   };
 
+  // ========== COMPRESS IMAGE FUNCTION ==========
+  const compressImage = (file) => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = (event) => {
+        const img = new Image();
+        img.src = event.target.result;
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          let width = img.width;
+          let height = img.height;
+          
+          // Max dimensions
+          const maxWidth = 800;
+          const maxHeight = 800;
+          
+          if (width > height) {
+            if (width > maxWidth) {
+              height = Math.round(height * (maxWidth / width));
+              width = maxWidth;
+            }
+          } else {
+            if (height > maxHeight) {
+              width = Math.round(width * (maxHeight / height));
+              height = maxHeight;
+            }
+          }
+          
+          canvas.width = width;
+          canvas.height = height;
+          
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, width, height);
+          
+          // Compress to JPEG with 0.7 quality
+          const compressedDataUrl = canvas.toDataURL('image/png');
+          resolve(compressedDataUrl);
+        };
+        img.onerror = (error) => reject(error);
+      };
+      reader.onerror = (error) => reject(error);
+    });
+  };
+
   // ========== VALIDATE DRESS FORM ==========
   const validateForm = () => {
     const errors = {};
@@ -179,16 +364,6 @@ const OwnerDashboard = () => {
     return errors;
   };
 
-  // ========== CONVERT IMAGE TO BASE64 FOR BACKEND ==========
-  const convertImageToBase64 = (file) => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.readAsDataURL(file);
-      reader.onload = () => resolve(reader.result);
-      reader.onerror = error => reject(error);
-    });
-  };
-
   // ========== HANDLE ADD DRESS SUBMIT ==========
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -205,30 +380,42 @@ const OwnerDashboard = () => {
 
     try {
       await simulateUpload();
+      const token = localStorage.getItem("token");
       
       let imageUrl = "";
       
-      // If there's an image file, convert to base64
+      // If there's an image file, compress and convert to base64
       if (imageFile) {
-        imageUrl = await convertImageToBase64(imageFile);
+        imageUrl = await compressImage(imageFile);
+        console.log("Compressed image size:", Math.round(imageUrl.length / 1024), "KB");
       }
 
-      // For demo: add to local state
-      const newDress = {
-        _id: Date.now().toString(),
+      // Create JSON payload for backend
+      const dressData = {
         name: formData.name,
-        category: formData.category,
         size: formData.size,
         color: formData.color,
+        category: formData.category,
         price: Number(formData.price),
-        description: formData.description,
-        image: imagePreview || "https://images.unsplash.com/photo-1583391733956-3750e0ff4e8b?w=600&q=80",
-        available: true,
-        createdAt: new Date().toISOString()
+        description: formData.description || "",
+        image: imageUrl || "https://images.unsplash.com/photo-1583391733956-3750e0ff4e8b?w=600&q=80"
       };
-      
-      setDresses(prev => [newDress, ...prev]);
-      
+
+      const response = await fetch("http://localhost:5000/api/dress/add", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify(dressData)
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || "Failed to add dress");
+      }
+
       setSuccess("Dress added successfully!");
       setFormData({
         name: "",
@@ -245,12 +432,16 @@ const OwnerDashboard = () => {
         fileInputRef.current.value = "";
       }
       
+      // Refresh the dress list from backend
+      await fetchMyDresses();
+      
       setTimeout(() => {
         setActiveTab("my-dresses");
         setSuccess("");
       }, 2000);
 
     } catch (err) {
+      console.error("Error adding dress:", err);
       setError(err.message || "Failed to add dress. Please try again.");
     } finally {
       setSubmitting(false);
@@ -264,8 +455,22 @@ const OwnerDashboard = () => {
     }
 
     try {
-      setDresses(dresses.filter(d => d._id !== dressId));
+      const token = localStorage.getItem("token");
+      
+      const response = await fetch(`http://localhost:5000/api/dress/${dressId}`, {
+        method: "DELETE",
+        headers: {
+          "Authorization": `Bearer ${token}`
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to delete dress");
+      }
+
       setSuccess("Dress deleted successfully");
+      await fetchMyDresses(); // Refresh the list
+      
       setTimeout(() => setSuccess(""), 3000);
     } catch (err) {
       setError(err.message);
@@ -275,12 +480,23 @@ const OwnerDashboard = () => {
   // ========== HANDLE TOGGLE AVAILABILITY ==========
   const handleToggleAvailability = async (dressId, currentStatus) => {
     try {
-      setDresses(dresses.map(dress => 
-        dress._id === dressId 
-          ? { ...dress, available: !currentStatus }
-          : dress
-      ));
-      setSuccess(currentStatus ? "Dress marked as rented" : "Dress marked as available");
+      const token = localStorage.getItem("token");
+      
+      const response = await fetch(`http://localhost:5000/api/dress/${dressId}/toggle`, {
+        method: "PATCH",
+        headers: {
+          "Authorization": `Bearer ${token}`
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to update status");
+      }
+
+      const data = await response.json();
+      setSuccess(data.message);
+      await fetchMyDresses(); // Refresh the list
+      
       setTimeout(() => setSuccess(""), 3000);
     } catch (err) {
       setError(err.message);
@@ -317,30 +533,42 @@ const OwnerDashboard = () => {
     setSuccess("");
 
     try {
+      const token = localStorage.getItem("token");
+      
       let imageUrl = imagePreview;
       if (imageFile) {
-        imageUrl = await convertImageToBase64(imageFile);
+        imageUrl = await compressImage(imageFile);
       }
       
-      // Update locally
-      setDresses(dresses.map(d => 
-        d._id === editingDress._id 
-          ? { 
-              ...d, 
-              name: formData.name,
-              size: formData.size,
-              color: formData.color,
-              category: formData.category,
-              price: Number(formData.price),
-              description: formData.description,
-              image: imageUrl
-            }
-          : d
-      ));
-      
+      const dressData = {
+        name: formData.name,
+        size: formData.size,
+        color: formData.color,
+        category: formData.category,
+        price: Number(formData.price),
+        description: formData.description || "",
+        image: imageUrl
+      };
+
+      const response = await fetch(`http://localhost:5000/api/dress/${editingDress._id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify(dressData)
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || "Failed to update dress");
+      }
+
       setSuccess("Dress updated successfully!");
       setShowEditModal(false);
       setEditingDress(null);
+      await fetchMyDresses(); // Refresh the list
       
       setTimeout(() => setSuccess(""), 3000);
     } catch (err) {
@@ -408,6 +636,16 @@ const OwnerDashboard = () => {
           >
             <i className="ri-add-circle-line"></i>
             Add New Dress
+          </button>
+          <button 
+            className={`tab-btn ${activeTab === "bookings" ? "active" : ""}`}
+            onClick={() => {
+              setActiveTab("bookings");
+              fetchPendingBookings();
+            }}
+          >
+            <i className="ri-calendar-check-line"></i>
+            Pending Bookings ({pendingBookings.length})
           </button>
           <button 
             className={`tab-btn ${activeTab === "returns" ? "active" : ""}`}
@@ -740,6 +978,97 @@ const OwnerDashboard = () => {
           </div>
         )}
 
+        {/* ========== PENDING BOOKINGS TAB ========== */}
+        {activeTab === "bookings" && (
+          <div className="bookings-tab">
+            <h2 className="tab-heading">Pending Bookings</h2>
+            {bookingsLoading ? (
+              <div className="loading-state">
+                <div className="spinner"></div>
+                <p>Loading bookings...</p>
+              </div>
+            ) : pendingBookings.length === 0 ? (
+              <div className="empty-state">
+                <i className="ri-calendar-line"></i>
+                <h3>No pending bookings</h3>
+                <p>When renters book your dresses, they'll appear here</p>
+              </div>
+            ) : (
+              <div className="bookings-grid">
+                {pendingBookings.map((booking) => (
+                  <div key={booking._id} className="booking-card">
+                    <div className="booking-header">
+                      <div className="booking-dress-info">
+                        <img 
+                          src={booking.dress?.image || "https://images.unsplash.com/photo-1583391733956-3750e0ff4e8b?w=100&q=80"} 
+                          alt={booking.dress?.name}
+                          className="booking-dress-image"
+                        />
+                        <div>
+                          <h3>{booking.dress?.name}</h3>
+                          <p className="booking-dress-category">{booking.dress?.category}</p>
+                        </div>
+                      </div>
+                      <span className="booking-status pending">Pending</span>
+                    </div>
+
+                    <div className="booking-details">
+                      <div className="detail-row">
+                        <i className="ri-user-line"></i>
+                        <strong>Renter:</strong> {booking.renter?.name}
+                      </div>
+                      <div className="detail-row">
+                        <i className="ri-phone-line"></i>
+                        <strong>Phone:</strong> {booking.deliveryAddress?.phone}
+                      </div>
+                      <div className="detail-row">
+                        <i className="ri-map-pin-line"></i>
+                        <strong>Address:</strong> {booking.deliveryAddress?.address}, {booking.deliveryAddress?.city}
+                      </div>
+                      <div className="detail-row">
+                        <i className="ri-calendar-line"></i>
+                        <strong>Dates:</strong> {formatDate(booking.startDate)} - {formatDate(booking.endDate)}
+                      </div>
+                      <div className="detail-row">
+                        <i className="ri-money-rupee-circle-line"></i>
+                        <strong>Total Amount:</strong> ₹{booking.totalAmount}
+                      </div>
+                    </div>
+
+                    <div className="booking-actions">
+                      <button 
+                        className="btn-confirm"
+                        onClick={() => handleConfirmBooking(booking._id)}
+                        disabled={processingBooking === booking._id}
+                      >
+                        {processingBooking === booking._id ? (
+                          <>
+                            <span className="spinner-small"></span>
+                            Processing...
+                          </>
+                        ) : (
+                          <>
+                            <i className="ri-check-line"></i>
+                            Confirm Booking
+                          </>
+                        )}
+                      </button>
+                      <button 
+                        className="btn-reject"
+                        onClick={() => handleRejectBooking(booking._id)}
+                        disabled={processingBooking === booking._id}
+                      >
+                        <i className="ri-close-line"></i>
+                        Reject
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
         {/* ========== PENDING RETURNS TAB ========== */}
         {activeTab === "returns" && (
           <div className="returns-tab">
@@ -772,6 +1101,10 @@ const OwnerDashboard = () => {
                         <strong>Renter:</strong> {returnItem.renter?.name}
                       </p>
                       <p>
+                        <i className="ri-phone-line"></i>
+                        <strong>Phone:</strong> {returnItem.renter?.phone || "Not provided"}
+                      </p>
+                      <p>
                         <i className="ri-calendar-line"></i>
                         <strong>Return Initiated:</strong> {formatDate(returnItem.returnInitiatedAt)}
                       </p>
@@ -783,6 +1116,12 @@ const OwnerDashboard = () => {
                         <i className="ri-check-line"></i>
                         <strong>Renter's Condition:</strong> {returnItem.renterAssessment?.condition}
                       </p>
+                      {returnItem.renterAssessment?.comments && (
+                        <p>
+                          <i className="ri-chat-1-line"></i>
+                          <strong>Comments:</strong> {returnItem.renterAssessment.comments}
+                        </p>
+                      )}
                     </div>
 
                     <div className="return-actions">
