@@ -42,14 +42,21 @@ const ReturnPage = () => {
   const fetchBookingDetails = async () => {
     try {
       const token = localStorage.getItem("token");
+      console.log("Fetching bookings with token:", token ? "Token exists" : "No token");
+      
       const response = await fetch(`http://localhost:5000/api/booking/my`, {
         headers: { "Authorization": `Bearer ${token}` }
       });
 
+      console.log("Bookings response status:", response.status);
+
       if (!response.ok) throw new Error("Failed to fetch bookings");
 
       const bookings = await response.json();
+      console.log("Bookings received:", bookings.length);
+      
       const foundBooking = bookings.find(b => b._id === bookingId);
+      console.log("Found booking:", foundBooking ? "Yes" : "No");
 
       if (!foundBooking) {
         throw new Error("Booking not found");
@@ -57,6 +64,7 @@ const ReturnPage = () => {
 
       setBooking(foundBooking);
     } catch (err) {
+      console.error("Error fetching booking:", err);
       setError(err.message);
     } finally {
       setLoading(false);
@@ -66,16 +74,23 @@ const ReturnPage = () => {
   const checkExistingReturn = async () => {
     try {
       const token = localStorage.getItem("token");
+      console.log("Checking existing return for booking:", bookingId);
+      
       const response = await fetch(`http://localhost:5000/api/return/booking/${bookingId}`, {
         headers: { "Authorization": `Bearer ${token}` }
       });
 
+      console.log("Existing return response status:", response.status);
+
       if (response.ok) {
         const data = await response.json();
+        console.log("Existing return found:", data);
         setExistingReturn(data);
+      } else {
+        console.log("No existing return found");
       }
     } catch (err) {
-      console.log("No existing return found");
+      console.log("Error checking existing return:", err);
     } finally {
       setCheckingReturn(false);
     }
@@ -84,6 +99,7 @@ const ReturnPage = () => {
   // Handle photo selection
   const handlePhotoChange = (e) => {
     const files = Array.from(e.target.files);
+    console.log("Photos selected:", files.length);
     
     // Validate file count
     if (photos.length + files.length > 5) {
@@ -104,6 +120,7 @@ const ReturnPage = () => {
       return true;
     });
 
+    console.log("Valid files:", validFiles.length);
     setPhotos([...photos, ...validFiles]);
 
     // Create preview URLs
@@ -112,6 +129,7 @@ const ReturnPage = () => {
   };
 
   const removePhoto = (index) => {
+    console.log("Removing photo at index:", index);
     const newPhotos = [...photos];
     const newPreviews = [...photoPreviews];
     
@@ -143,12 +161,31 @@ const ReturnPage = () => {
     formData.append("condition", condition);
     formData.append("comments", comments);
     
-    photos.forEach(photo => {
+    console.log("=== DEBUG FORM DATA ===");
+    console.log("bookingId:", bookingId);
+    console.log("condition:", condition);
+    console.log("comments:", comments);
+    console.log("photos count:", photos.length);
+    
+    // Append each photo and log details
+    photos.forEach((photo, index) => {
+      console.log(`Photo ${index + 1}:`, photo.name, photo.type, (photo.size / 1024).toFixed(2), "KB");
       formData.append("photos", photo);
     });
 
+    // Log all FormData entries
+    for (let pair of formData.entries()) {
+      if (pair[0] === 'photos') {
+        console.log(pair[0] + ': ' + pair[1].name);
+      } else {
+        console.log(pair[0] + ': ' + pair[1]);
+      }
+    }
+
     try {
       const token = localStorage.getItem("token");
+      console.log("Token present:", !!token);
+      console.log("Sending request to:", "http://localhost:5000/api/return/initiate");
       
       // Simulate progress
       const progressInterval = setInterval(() => {
@@ -165,25 +202,41 @@ const ReturnPage = () => {
         method: "POST",
         headers: {
           "Authorization": `Bearer ${token}`
+          // DON'T set Content-Type header - browser will set it automatically
         },
         body: formData
       });
 
       clearInterval(progressInterval);
-      setUploadProgress(100);
+      
+      console.log("Response status:", response.status);
+      console.log("Response status text:", response.statusText);
 
-      const data = await response.json();
+      // Try to get response text first for debugging
+      const responseText = await response.text();
+      console.log("Raw response:", responseText);
+
+      let data;
+      try {
+        data = JSON.parse(responseText);
+      } catch (e) {
+        console.error("Failed to parse JSON response:", e);
+        throw new Error("Server returned invalid response");
+      }
 
       if (!response.ok) {
         throw new Error(data.message || "Failed to initiate return");
       }
 
+      setUploadProgress(100);
       setSuccess(true);
+      console.log("Return initiated successfully!");
       
       // Clean up preview URLs
       photoPreviews.forEach(url => URL.revokeObjectURL(url));
 
     } catch (err) {
+      console.error("Fetch error:", err);
       setError(err.message);
       setUploadProgress(0);
     } finally {
@@ -222,7 +275,7 @@ const ReturnPage = () => {
             </div>
             <p>You have already started the return process for this dress.</p>
             <p><strong>Status:</strong> {existingReturn.status}</p>
-            <p><strong>Submitted on:</strong> {formatDate(existingReturn.returnInitiatedAt)}</p>
+            <p><strong>Submitted on:</strong> {formatDate(existingReturn.createdAt)}</p>
             <Link to={`/return-status/${bookingId}`} className="btn-primary">
               View Return Status
             </Link>
@@ -242,6 +295,28 @@ const ReturnPage = () => {
             <i className="ri-error-warning-line"></i>
             <h2>Booking Not Found</h2>
             <p>The booking you're trying to return doesn't exist.</p>
+            <Link to="/my-bookings" className="btn-primary">
+              Go to My Bookings
+            </Link>
+          </div>
+        </div>
+        <Footer />
+      </div>
+    );
+  }
+
+  // Check if booking can be returned (any active booking)
+  const canReturn = booking.status === "confirmed" || booking.status === "booked";
+
+  if (!canReturn) {
+    return (
+      <div className="return-page">
+        <Navbar />
+        <div className="return-container">
+          <div className="error-card glass-panel">
+            <i className="ri-error-warning-line"></i>
+            <h2>Cannot Return This Dress</h2>
+            <p>This booking is not in an active state. Current status: <strong>{booking.status}</strong></p>
             <Link to="/my-bookings" className="btn-primary">
               Go to My Bookings
             </Link>
@@ -318,6 +393,22 @@ const ReturnPage = () => {
                 <span>Return by: {formatDate(booking.endDate)}</span>
               </div>
             </div>
+            
+            {/* Early Return Notice */}
+            {new Date() < new Date(booking.endDate) && (
+              <div className="early-return-notice">
+                <i className="ri-information-line"></i>
+                <span>You're returning this dress early. No problem!</span>
+              </div>
+            )}
+            
+            {/* Late Return Warning */}
+            {new Date() > new Date(booking.endDate) && (
+              <div className="late-return-warning">
+                <i className="ri-alert-line"></i>
+                <span>You're returning this dress late. Additional charges may apply.</span>
+              </div>
+            )}
           </div>
         </div>
 

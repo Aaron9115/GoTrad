@@ -111,7 +111,7 @@ const AIRecommendation = () => {
           signal: AbortSignal.timeout(2000)
         });
         setFlaskStatus('online');
-        console.log('✅ Flask backend connected on port 5001');
+        console.log(' Flask backend connected on port 5001');
       } catch (err) {
         console.log('Flask connection error:', err.message);
         try {
@@ -120,9 +120,9 @@ const AIRecommendation = () => {
             signal: AbortSignal.timeout(2000)
           });
           setFlaskStatus('online');
-          console.log('✅ Flask backend connected via OPTIONS');
+          console.log(' Flask backend connected via OPTIONS');
         } catch (err2) {
-          console.log('❌ Flask backend offline');
+          console.log(' Flask backend offline');
           setFlaskStatus('offline');
         }
       }
@@ -135,13 +135,13 @@ const AIRecommendation = () => {
         });
         if (response.ok) {
           setNodeStatus('online');
-          console.log('✅ Node.js backend connected');
+          console.log(' Node.js backend connected');
         } else {
           setNodeStatus('offline');
         }
       } catch (err) {
         setNodeStatus('offline');
-        console.log('❌ Node.js backend offline');
+        console.log(' Node.js backend offline');
       }
     };
     
@@ -162,7 +162,7 @@ const AIRecommendation = () => {
     if (step === 2) {
       const checkVideoInterval = setInterval(() => {
         if (videoRef.current) {
-          console.log("✅ Video element created and ready");
+          console.log(" Video element created and ready");
           setVideoElementCreated(true);
           clearInterval(checkVideoInterval);
         }
@@ -262,105 +262,42 @@ const AIRecommendation = () => {
     startCamera();
   };
 
-  // Fetch real dresses from database based on skin tone
-  const fetchRecommendedDresses = async (skinToneValue) => {
-    try {
-      const response = await fetch('http://localhost:5000/api/browse');
-      
-      if (!response.ok) {
-        throw new Error('Failed to fetch dresses');
-      }
-      
-      const data = await response.json();
-      
-      // Transform the data to match frontend structure
-      const transformedDresses = data.map(dress => ({
-        _id: dress._id,
-        name: dress.name,
-        category: dress.category,
-        size: dress.size,
-        color: dress.color,
-        pricePerDay: dress.price,
-        image: dress.image || "https://images.unsplash.com/photo-1583391733956-3750e0ff4e8b?w=600&q=80",
-        available: dress.available
-      }));
-      
-      setRecommendedDresses(transformedDresses);
-      
-    } catch (err) {
-      console.error('Error fetching dresses:', err);
-      setError('Could not load recommended dresses');
-      setRecommendedDresses([]);
-    }
-  };
-
-  const analyzeSkinTone = async () => {
-    if (!window.capturedImageBlob) {
-      setError("No image captured");
-      return;
-    }
-
-    setLoading(true);
-    setError(null);
-    
-    try {
-      const formData = new FormData();
-      formData.append("image", window.capturedImageBlob, "face.jpg");
-      
-      console.log("Sending image to Flask backend...");
-      const response = await fetch('http://localhost:5001/predict-skin-tone', {
-        method: 'POST',
-        body: formData,
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        console.log("Flask response:", data);
-        setSkinTone(data.skin_tone);
-        setFlaskStatus('online');
-        
-        // Fetch real dresses from database
-        await fetchRecommendedDresses(data.skin_tone);
-        setStep(3);
-      } else {
-        throw new Error("Flask returned error");
-      }
-    } catch (err) {
-      console.error("Flask backend error:", err);
-      setError("AI analysis failed. Please try again.");
-      setFlaskStatus('offline');
-    } finally {
-      setLoading(false);
-    }
-  };
-
+  // FIXED getSkinToneInfo function - matches controller recommendations
   const getSkinToneInfo = (tone) => {
-    switch(tone?.toLowerCase()) {
-      case "light":
-        return {
-          gradient: "linear-gradient(135deg, #f5e6d3, #e6d5b8)",
-          description: "Light skin tones look stunning in jewel tones like emerald green, sapphire blue, and rich purples.",
-          recommendedColors: ["Emerald Green", "Sapphire Blue", "Rich Purple", "Rose Pink", "Terracotta"]
-        };
-      case "medium":
-        return {
-          gradient: "linear-gradient(135deg, #d9b99b, #c4a484)",
-          description: "Medium skin tones glow in warm colors like burnt orange, mustard yellow, and coral.",
-          recommendedColors: ["Burnt Orange", "Mustard Yellow", "Coral", "Teal", "Burgundy"]
-        };
-      case "dark":
-        return {
-          gradient: "linear-gradient(135deg, #8d5524, #6b3e1a)",
-          description: "Dark skin tones radiate in vibrant colors like fuchsia, electric blue, and emerald green.",
-          recommendedColors: ["Fuchsia", "Electric Blue", "Emerald Green", "Gold", "Silver"]
-        };
-      default:
-        return {
-          gradient: "linear-gradient(135deg, #e0e0e0, #c0c0c0)",
-          description: "Every skin tone has its unique beauty.",
-          recommendedColors: ["Explore Collection"]
-        };
+    // Match your controller's color recommendations
+    const colorMap = {
+      "light": ["Red", "Maroon", "Pink", "Purple", "Blue", "Green", "Gold"],
+      "medium": ["Red", "Maroon", "Orange", "Yellow", "Green", "Blue", "Gold"],
+      "dark": ["Red", "Maroon", "Purple", "Blue", "Green", "Gold", "Silver"]
+    };
+
+    const descriptions = {
+      "light": "Light skin tones look stunning in rich reds, maroons, pinks, and jewel tones like purple, blue, and green.",
+      "medium": "Medium skin tones glow in warm colors like red, maroon, orange, yellow, and earthy greens and blues.",
+      "dark": "Dark skin tones radiate in vibrant colors like red, maroon, purple, blue, green, and metallics like gold and silver."
+    };
+
+    const gradients = {
+      "light": "linear-gradient(135deg, #f5e6d3, #e6d5b8)",
+      "medium": "linear-gradient(135deg, #d9b99b, #c4a484)",
+      "dark": "linear-gradient(135deg, #8d5524, #6b3e1a)"
+    };
+
+    const toneLower = tone?.toLowerCase();
+    
+    if (toneLower && colorMap[toneLower]) {
+      return {
+        gradient: gradients[toneLower],
+        description: descriptions[toneLower],
+        recommendedColors: colorMap[toneLower]
+      };
     }
+    
+    return {
+      gradient: "linear-gradient(135deg, #e0e0e0, #c0c0c0)",
+      description: "Every skin tone has its unique beauty.",
+      recommendedColors: ["Red", "Blue", "Green", "Gold"]
+    };
   };
 
   const toneInfo = getSkinToneInfo(skinTone);
@@ -381,6 +318,77 @@ const AIRecommendation = () => {
     }
   };
 
+  // UPDATED analyzeSkinTone function - now calls Node.js backend
+  const analyzeSkinTone = async () => {
+    if (!window.capturedImageBlob) {
+      setError("No image captured");
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+    
+    try {
+      const formData = new FormData();
+      formData.append("image", window.capturedImageBlob, "face.jpg");
+      
+      console.log("Sending to Node.js backend...");
+      
+      // Send to Node.js backend (not directly to Flask)
+      const token = localStorage.getItem("token");
+      const response = await fetch('http://localhost:5000/api/recommend', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+          // Don't set Content-Type - browser will set it with boundary
+        },
+        body: formData,
+      });
+      
+      const data = await response.json();
+      console.log("Recommendation response:", data);
+      
+      if (response.ok) {
+        setSkinTone(data.skinTone);
+        
+        // Transform the dresses from the response
+        const transformedDresses = data.dresses.map(dress => ({
+          _id: dress._id,
+          name: dress.name,
+          category: dress.category,
+          size: dress.size,
+          color: dress.color,
+          pricePerDay: dress.price,
+          image: dress.image || "https://images.unsplash.com/photo-1583391733956-3750e0ff4e8b?w=600&q=80",
+          available: dress.available
+        }));
+        
+        setRecommendedDresses(transformedDresses);
+        setStep(3);
+      } else {
+        throw new Error(data.message || "Recommendation failed");
+      }
+    } catch (err) {
+      console.error("Recommendation error:", err);
+      setError("AI analysis failed. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="ai-recommendation-page">
+        <Navbar />
+        <div className="loading-container">
+          <div className="spinner"></div>
+          <p>Loading...</p>
+        </div>
+        <Footer />
+      </div>
+    );
+  }
+
   return (
     <div className="ai-recommendation-page">
       <Navbar />
@@ -390,7 +398,7 @@ const AIRecommendation = () => {
           <h1>AI Skin Tone <span className="gradient-text">Recommendation</span></h1>
           <p>Discover the perfect dress colors that complement your unique skin tone</p>
           
-          {/* Server Status Indicators - Now centered */}
+          {/* Server Status Indicators */}
           <div style={{
             display: 'flex',
             justifyContent: 'center',
@@ -717,7 +725,7 @@ const AIRecommendation = () => {
                 </div>
               </div>
 
-              {/* Color Palette - Just colors, no celebrity matches */}
+              {/* Color Palette - Now matches controller */}
               <div className="color-palette-section">
                 <h3>Colors that suit you</h3>
                 <div className="color-palette">
@@ -726,17 +734,16 @@ const AIRecommendation = () => {
                       <div 
                         className="palette-color" 
                         style={{ 
-                          background: color.includes("Green") ? "#10b981" :
-                                     color.includes("Blue") ? "#3b82f6" :
-                                     color.includes("Purple") ? "#8b5cf6" :
+                          background: color.includes("Red") ? "#ef4444" :
+                                     color.includes("Maroon") ? "#991b1b" :
                                      color.includes("Pink") ? "#ec4899" :
+                                     color.includes("Purple") ? "#8b5cf6" :
+                                     color.includes("Blue") ? "#3b82f6" :
+                                     color.includes("Green") ? "#10b981" :
                                      color.includes("Orange") ? "#f97316" :
                                      color.includes("Yellow") ? "#eab308" :
-                                     color.includes("Red") ? "#ef4444" :
                                      color.includes("Gold") ? "#f59e0b" :
                                      color.includes("Silver") ? "#94a3b8" :
-                                     color.includes("Teal") ? "#14b8a6" :
-                                     color.includes("Burgundy") ? "#991b1b" :
                                      "#0284c7"
                         }}
                       ></div>
@@ -747,7 +754,7 @@ const AIRecommendation = () => {
               </div>
             </div>
 
-            {/* Recommended Dresses - REAL DRESSES FROM DATABASE */}
+            {/* Recommended Dresses - FILTERED by skin tone */}
             <div className="recommended-dresses">
               <div className="section-header-with-action">
                 <h2>Recommended for You</h2>

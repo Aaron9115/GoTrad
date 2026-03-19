@@ -10,8 +10,10 @@ const MyBookings = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [cancelLoading, setCancelLoading] = useState(null);
+  const [deleteLoading, setDeleteLoading] = useState(null);
   const [activeTab, setActiveTab] = useState("all");
   const [showCancelModal, setShowCancelModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [selectedBooking, setSelectedBooking] = useState(null);
 
   // Check if user is logged in
@@ -59,6 +61,12 @@ const MyBookings = () => {
     setShowCancelModal(true);
   };
 
+  // Handle delete booking
+  const handleDeleteClick = (booking) => {
+    setSelectedBooking(booking);
+    setShowDeleteModal(true);
+  };
+
   const confirmCancel = async () => {
     if (!selectedBooking) return;
 
@@ -95,6 +103,41 @@ const MyBookings = () => {
       setError(err.message);
     } finally {
       setCancelLoading(null);
+    }
+  };
+
+  const confirmDelete = async () => {
+    if (!selectedBooking) return;
+
+    setDeleteLoading(selectedBooking._id);
+    setError(null);
+
+    try {
+      const token = localStorage.getItem("token");
+      
+      const response = await fetch(`http://localhost:5000/api/booking/delete/${selectedBooking._id}`, {
+        method: "DELETE",
+        headers: {
+          "Authorization": `Bearer ${token}`
+        }
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || "Failed to delete booking");
+      }
+
+      // Remove the booking from the list
+      setBookings(prev => prev.filter(booking => booking._id !== selectedBooking._id));
+
+      setShowDeleteModal(false);
+      setSelectedBooking(null);
+
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setDeleteLoading(null);
     }
   };
 
@@ -266,14 +309,18 @@ const MyBookings = () => {
           <div className="bookings-list">
             {filteredBookings.map((booking) => {
               const priceDetails = calculateTotal(booking);
-              // Show cancel button for pending or confirmed bookings
-              const canCancel = booking.status === "pending" || booking.status === "confirmed" || booking.status === "booked";
+              // Show cancel button for pending or confirmed bookings that haven't started yet
+              const canCancel = (booking.status === "pending" || booking.status === "confirmed") && new Date(booking.startDate) > new Date();
               // Show return button for confirmed bookings after rental period
               const canReturn = (booking.status === "confirmed" || booking.status === "booked") && new Date(booking.endDate) <= new Date() && !isReturnInProgress(booking) && !isReturnResolved(booking);
               // Show return in progress badge
               const returnInProgress = isReturnInProgress(booking);
               // Show return resolved details
               const returnResolved = isReturnResolved(booking);
+              // Show delete button for cancelled or returned bookings
+              const canDelete = booking.status === "cancelled" || booking.status === "returned";
+              // Show review button for returned bookings
+              const canReview = booking.status === "returned";
               
               return (
                 <div key={booking._id} className="booking-card glass-panel">
@@ -450,7 +497,7 @@ const MyBookings = () => {
                         <i className="ri-eye-line"></i> View Dress
                       </Link>
                       
-                      {/* Cancel Button - for pending or confirmed bookings */}
+                      {/* Cancel Button - for pending or confirmed bookings that haven't started */}
                       {canCancel && (
                         <button 
                           className="btn-cancel"
@@ -488,6 +535,36 @@ const MyBookings = () => {
                         >
                           <i className="ri-file-list-line"></i> View Return Status
                         </Link>
+                      )}
+
+                      {/* Review Button - for returned bookings */}
+                      {canReview && (
+                        <Link 
+                          to={`/reviews/${booking.dress?._id}`} 
+                          className="btn-review"
+                        >
+                          <i className="ri-star-line"></i> Write a Review
+                        </Link>
+                      )}
+
+                      {/* Delete Button - for cancelled or returned bookings */}
+                      {canDelete && (
+                        <button 
+                          className="btn-delete"
+                          onClick={() => handleDeleteClick(booking)}
+                          disabled={deleteLoading === booking._id}
+                        >
+                          {deleteLoading === booking._id ? (
+                            <>
+                              <span className="spinner-small"></span>
+                              Deleting...
+                            </>
+                          ) : (
+                            <>
+                              <i className="ri-delete-bin-line"></i> Delete
+                            </>
+                          )}
+                        </button>
                       )}
                     </div>
                   </div>
@@ -542,6 +619,54 @@ const MyBookings = () => {
                   <>Cancelling...</>
                 ) : (
                   <>Yes, Cancel Booking</>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteModal && selectedBooking && (
+        <div className="modal-overlay">
+          <div className="modal-content glass-panel">
+            <div className="modal-header">
+              <h2>Delete Booking</h2>
+              <button className="modal-close" onClick={() => setShowDeleteModal(false)}>
+                <i className="ri-close-line"></i>
+              </button>
+            </div>
+            
+            <div className="modal-body">
+              <p>Are you sure you want to delete this booking?</p>
+              <p className="warning-text" style={{color: '#ef4444', marginTop: '10px'}}>
+                <i className="ri-information-line"></i> This action cannot be undone. The booking will be permanently removed from your history.
+              </p>
+              
+              <div className="booking-summary">
+                <p><strong>Dress:</strong> {selectedBooking.dress?.name}</p>
+                <p><strong>Dates:</strong> {formatDate(selectedBooking.startDate)} - {formatDate(selectedBooking.endDate)}</p>
+                <p><strong>Status:</strong> {selectedBooking.status}</p>
+              </div>
+            </div>
+
+            <div className="modal-footer">
+              <button 
+                className="btn-outline"
+                onClick={() => setShowDeleteModal(false)}
+              >
+                Cancel
+              </button>
+              <button 
+                className="btn-danger"
+                onClick={confirmDelete}
+                disabled={deleteLoading === selectedBooking._id}
+                style={{background: '#ef4444'}}
+              >
+                {deleteLoading === selectedBooking._id ? (
+                  <>Deleting...</>
+                ) : (
+                  <>Yes, Delete</>
                 )}
               </button>
             </div>

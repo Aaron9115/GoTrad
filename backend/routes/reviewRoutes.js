@@ -12,6 +12,6 @@ router.post("/", protect, addReview);
 
 
 router.get("/summary/:dressId", getDressRatingSummary);
-router.get("/:dressId", getDressReviews);
+router.get("/dress/:dressId", getDressReviews);
 
 module.exports = router;

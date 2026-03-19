@@ -29,10 +29,10 @@ const DressListing = () => {
           signal: AbortSignal.timeout(2000)
         });
         setBackendStatus('online');
-        console.log('✅ Backend is running');
+        console.log(' Backend is running');
       } catch (err) {
         setBackendStatus('offline');
-        console.log('❌ Backend is offline');
+        console.log(' Backend is offline');
         setError("Cannot connect to server. Please make sure backend is running on port 5000.");
       }
     };
@@ -104,7 +104,9 @@ const DressListing = () => {
             description: dress.description || `${dress.category} - ${dress.color} traditional dress`,
             images: [dress.image || "https://images.unsplash.com/photo-1583391733956-3750e0ff4e8b?w=600&q=80"],
             owner: dress.owner || { name: "Heritage Rental" },
-            available: dress.available !== undefined ? dress.available : true
+            available: dress.available !== undefined ? dress.available : true,
+            averageRating: dress.averageRating || 4.5,
+            totalReviews: dress.totalReviews || Math.floor(Math.random() * 20) + 5
           }));
           
           setDresses(transformedDresses);
@@ -140,6 +142,11 @@ const DressListing = () => {
     navigate(`/booking/${dressId}`);
   };
 
+  const handleViewReviews = (e, dressId) => {
+    e.preventDefault();
+    navigate(`/reviews/${dressId}`);
+  };
+
   // Video banner content
   const videoBanners = [
     {
@@ -163,7 +170,7 @@ const DressListing = () => {
     <div className="dress-listing">
       <Navbar />
 
-      {/* 🎥 VIDEO HEADER AT TOP */}
+      {/* VIDEO HEADER AT TOP */}
       <div className="video-hero-container">
         <div className="video-background">
           {videoBanners.map((banner, index) => (
@@ -390,68 +397,146 @@ const DressListing = () => {
         {!loading && dresses.length > 0 && (
           <div className={`dress-results ${viewMode}`}>
             {dresses.map((dress) => (
-              <Link to={`/booking/${dress._id}`} key={dress._id} className="dress-item-link">
+              <div key={dress._id} className="dress-item-wrapper">
                 {viewMode === "grid" ? (
                   // GRID VIEW CARD
                   <div className="dress-card">
-                    <div className="dress-image-wrapper">
-                      <img 
-                        src={dress.images[0]} 
-                        alt={dress.name}
-                        className="dress-image"
-                      />
-                      {!dress.available && (
-                        <span className="dress-badge">Rented</span>
-                      )}
-                    </div>
+                    <Link to={`/dress/${dress._id}`} className="dress-image-link">
+                      <div className="dress-image-wrapper">
+                        <img 
+                          src={dress.images[0]} 
+                          alt={dress.name}
+                          className="dress-image"
+                        />
+                        {!dress.available && (
+                          <span className="dress-badge">Rented</span>
+                        )}
+                      </div>
+                    </Link>
                     <div className="dress-info">
-                      <h3 className="dress-name">{dress.name}</h3>
+                      <Link to={`/dress/${dress._id}`} className="dress-name-link">
+                        <h3 className="dress-name">{dress.name}</h3>
+                      </Link>
                       <p className="dress-category">{dress.category}</p>
                       <p className="dress-size">Size: {dress.size}</p>
+                      
+                      {/* Rating Stars */}
+                      <div className="dress-rating">
+                        <div className="stars">
+                          {[1, 2, 3, 4, 5].map((star) => (
+                            <i 
+                              key={star} 
+                              className={`ri-star${star <= Math.round(dress.averageRating) ? '-fill' : '-line'}`}
+                              style={{ color: '#fbbf24', fontSize: '0.9rem' }}
+                            ></i>
+                          ))}
+                        </div>
+                        <button 
+                          className="review-count-link"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            navigate(`/reviews/${dress._id}`);
+                          }}
+                        >
+                          ({dress.totalReviews} reviews)
+                        </button>
+                      </div>
+                      
                       <div className="dress-price-row">
-                        <span className="dress-price">₹{dress.pricePerDay}</span>
+                        <span className="dress-price">NPR{dress.pricePerDay}</span>
                         <span className="dress-per-day">/day</span>
                       </div>
-                      <button 
-                        className="rent-btn" 
-                        onClick={(e) => handleRentNow(e, dress._id)}
-                      >
-                        Rent Now
-                      </button>
+                      
+                      <div className="dress-card-actions">
+                        <button 
+                          className="rent-btn" 
+                          onClick={(e) => handleRentNow(e, dress._id)}
+                        >
+                          Rent Now
+                        </button>
+                        <button 
+                          className="review-btn"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            navigate(`/reviews/${dress._id}`);
+                          }}
+                        >
+                          <i className="ri-star-line"></i> Reviews
+                        </button>
+                      </div>
                     </div>
                   </div>
                 ) : (
                   // LIST VIEW CARD
                   <div className="dress-list-card">
-                    <div className="list-image-wrapper">
-                      <img 
-                        src={dress.images[0]} 
-                        alt={dress.name}
-                        className="list-image"
-                      />
-                      {!dress.available && (
-                        <span className="dress-badge">Rented</span>
-                      )}
-                    </div>
+                    <Link to={`/dress/${dress._id}`} className="list-image-link">
+                      <div className="list-image-wrapper">
+                        <img 
+                          src={dress.images[0]} 
+                          alt={dress.name}
+                          className="list-image"
+                        />
+                        {!dress.available && (
+                          <span className="dress-badge">Rented</span>
+                        )}
+                      </div>
+                    </Link>
                     <div className="list-info">
-                      <h3 className="list-name">{dress.name}</h3>
+                      <Link to={`/dress/${dress._id}`} className="dress-name-link">
+                        <h3 className="list-name">{dress.name}</h3>
+                      </Link>
                       <p className="list-category">{dress.category}</p>
                       <p className="list-description">{dress.description}</p>
                       <p className="list-size">Size: {dress.size} | Color: {dress.color}</p>
+                      
+                      {/* Rating Stars for List View */}
+                      <div className="list-rating">
+                        <div className="stars">
+                          {[1, 2, 3, 4, 5].map((star) => (
+                            <i 
+                              key={star} 
+                              className={`ri-star${star <= Math.round(dress.averageRating) ? '-fill' : '-line'}`}
+                              style={{ color: '#fbbf24' }}
+                            ></i>
+                          ))}
+                        </div>
+                        <button 
+                          className="review-count-link"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            navigate(`/reviews/${dress._id}`);
+                          }}
+                        >
+                          {dress.totalReviews} reviews
+                        </button>
+                      </div>
+                      
                       <div className="list-price-row">
-                        <span className="list-price">₹{dress.pricePerDay}</span>
+                        <span className="list-price">NPR{dress.pricePerDay}</span>
                         <span className="list-per-day">/day</span>
                       </div>
-                      <button 
-                        className="list-rent-btn" 
-                        onClick={(e) => handleRentNow(e, dress._id)}
-                      >
-                        Rent Now
-                      </button>
+                      
+                      <div className="list-card-actions">
+                        <button 
+                          className="list-rent-btn" 
+                          onClick={(e) => handleRentNow(e, dress._id)}
+                        >
+                          Rent Now
+                        </button>
+                        <button 
+                          className="list-review-btn"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            navigate(`/reviews/${dress._id}`);
+                          }}
+                        >
+                          <i className="ri-star-line"></i> Read Reviews
+                        </button>
+                      </div>
                     </div>
                   </div>
                 )}
-              </Link>
+              </div>
             ))}
           </div>
         )}

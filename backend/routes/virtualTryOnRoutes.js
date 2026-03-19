@@ -3,7 +3,7 @@ const {
   processVirtualTryOn,
   checkServiceStatus
 } = require("../controllers/virtualTryOnController");
-const upload = require("../middleware/upload"); // Using your existing upload middleware
+const upload = require("../middleware/upload"); // Using existing upload middleware
 
 const router = express.Router();
 

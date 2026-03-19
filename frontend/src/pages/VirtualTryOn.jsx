@@ -235,9 +235,9 @@ const VirtualTryOn = () => {
       dressImg.onload = () => {
         // Make dress FULL SCREEN width
      const overlayWidth = canvas.width * 0.65;
-     const overlayHeight = canvas.height * 0.72;
+     const overlayHeight = canvas.height * 0.75;
      const overlayX = (canvas.width - overlayWidth) / 2;
-     const overlayY = canvas.height * 0.34;
+     const overlayY = canvas.height * 0.36;
         
         // Draw with some transparency to blend
         context.globalAlpha = 0.9;

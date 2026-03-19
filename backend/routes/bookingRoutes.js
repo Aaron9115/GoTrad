@@ -6,7 +6,8 @@ const {
   getOwnerPendingBookings,
   confirmBooking,
   rejectBooking,
-  cancelBooking 
+  cancelBooking,
+  deleteBooking  
 } = require("../controllers/bookingController");
 const protect = require("../middleware/authMiddleware");
 
@@ -32,5 +33,8 @@ router.put("/reject/:id", protect, rejectBooking);
 
 // Renter cancels booking
 router.put("/cancel/:id", protect, cancelBooking);
+
+// Renter deletes booking 
+router.delete("/delete/:id", protect, deleteBooking);
 
 module.exports = router;

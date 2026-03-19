@@ -892,3 +892,147 @@ body {
     font-size: 1.1rem;
   }
 }
+
+/* Rating Stars */
+.dress-rating {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 8px 0;
+}
+
+.stars {
+  display: flex;
+  gap: 2px;
+}
+
+.review-count-link {
+  background: none;
+  border: none;
+  color: #0284c7;
+  font-size: 0.85rem;
+  cursor: pointer;
+  text-decoration: underline;
+  padding: 0;
+}
+
+.review-count-link:hover {
+  color: #0369a1;
+}
+
+/* Card Actions */
+.dress-card-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.rent-btn {
+  flex: 2;
+  padding: 10px;
+  background: #0284c7;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.review-btn {
+  flex: 1;
+  padding: 10px;
+  background: #f3f4f6;
+  color: #4b5563;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  font-weight: 500;
+  font-size: 0.9rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+
+.review-btn:hover {
+  background: #e5e7eb;
+}
+
+/* List View Ratings */
+.list-rating {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 10px 0;
+}
+
+.list-card-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 15px;
+}
+
+.list-rent-btn {
+  flex: 2;
+  padding: 10px 20px;
+  background: #0284c7;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.list-review-btn {
+  flex: 1;
+  padding: 10px 20px;
+  background: #f3f4f6;
+  color: #4b5563;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  font-weight: 500;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+
+.list-review-btn:hover {
+  background: #e5e7eb;
+}
+
+/* Dress name links */
+.dress-name-link {
+  text-decoration: none;
+  color: inherit;
+}
+
+.dress-name-link:hover .dress-name {
+  color: #0284c7;
+}
+
+.dress-image-link {
+  text-decoration: none;
+  display: block;
+}
+
+.list-image-link {
+  text-decoration: none;
+  display: block;
+}
+
+@media (max-width: 640px) {
+  .dress-card-actions,
+  .list-card-actions {
+    flex-direction: column;
+  }
+  
+  .rent-btn,
+  .review-btn,
+  .list-rent-btn,
+  .list-review-btn {
+    width: 100%;
+  }
+}

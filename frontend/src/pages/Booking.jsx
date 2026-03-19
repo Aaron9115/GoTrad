@@ -15,12 +15,14 @@ const BookingPage = () => {
     endDate: "",
     address: "",
     city: "",
-    phone: ""
+    phone: "",
+    deliveryMethod: "pickup"
   });
   const [priceBreakdown, setPriceBreakdown] = useState({
     days: 0,
     subtotal: 0,
     serviceFee: 0,
+    deliveryFee: 0,
     securityDeposit: 1000,
     total: 0
   });
@@ -29,6 +31,7 @@ const BookingPage = () => {
   const [user, setUser] = useState(null);
   const [dateError, setDateError] = useState("");
   const [agreedToTerms, setAgreedToTerms] = useState(false);
+  const [agreedToDigitalAgreement, setAgreedToDigitalAgreement] = useState(false);
   const [backendStatus, setBackendStatus] = useState('checking');
 
   // Check if backend is running
@@ -40,10 +43,8 @@ const BookingPage = () => {
           signal: AbortSignal.timeout(2000)
         });
         setBackendStatus('online');
-        console.log(' Backend is running');
       } catch (err) {
         setBackendStatus('offline');
-        console.log(' Backend is offline');
       }
     };
     checkBackend();
@@ -56,7 +57,6 @@ const BookingPage = () => {
     if (token && userData) {
       const parsedUser = JSON.parse(userData);
       setUser(parsedUser);
-      // Pre-fill phone if available in user data
       if (parsedUser.phone) {
         setBookingData(prev => ({ ...prev, phone: parsedUser.phone }));
       }
@@ -70,11 +70,7 @@ const BookingPage = () => {
         setLoading(true);
         setError(null);
         
-        console.log(`Fetching dress with ID: ${dressId}`);
-        
-        // Try to fetch from backend first
         if (backendStatus === 'online') {
-          // First try to get all dresses and find by ID
           const response = await fetch(`http://localhost:5000/api/browse`);
           
           if (!response.ok) {
@@ -82,13 +78,9 @@ const BookingPage = () => {
           }
 
           const data = await response.json();
-          console.log('Received all dresses:', data);
-          
-          // Find the dress with matching ID
           const foundDress = data.find(d => d._id === dressId);
           
           if (foundDress) {
-            console.log('Found dress:', foundDress);
             setDress({
               _id: foundDress._id,
               name: foundDress.name,
@@ -102,36 +94,12 @@ const BookingPage = () => {
               available: foundDress.available !== undefined ? foundDress.available : true
             });
           } else {
-            // Try to fetch single dress if endpoint exists
-            try {
-              const singleResponse = await fetch(`http://localhost:5000/api/dress/${dressId}`);
-              if (singleResponse.ok) {
-                const singleDress = await singleResponse.json();
-                setDress({
-                  _id: singleDress._id,
-                  name: singleDress.name,
-                  category: singleDress.category,
-                  size: singleDress.size,
-                  color: singleDress.color,
-                  pricePerDay: singleDress.price,
-                  description: singleDress.description,
-                  images: [singleDress.image || "https://images.unsplash.com/photo-1583391733956-3750e0ff4e8b?w=600&q=80"],
-                  owner: singleDress.owner || { name: "Heritage Rental" },
-                  available: singleDress.available
-                });
-              } else {
-                setError("Dress not found in database");
-              }
-            } catch (err) {
-              setError("Dress not found in database");
-            }
+            setError("Dress not found");
           }
         } else {
-          // Backend offline - show error instead of mock data
           setError("Cannot connect to server. Please make sure backend is running.");
         }
       } catch (err) {
-        console.error("Error fetching dress:", err);
         setError(err.message || "Failed to load dress details");
       } finally {
         setLoading(false);
@@ -161,12 +129,14 @@ const BookingPage = () => {
         const subtotal = dress.pricePerDay * diffDays;
         const serviceFee = Math.round(subtotal * 0.05);
         const securityDeposit = 1000;
-        const total = subtotal + serviceFee + securityDeposit;
+        const deliveryFee = bookingData.deliveryMethod === 'delivery' ? 100 : 0;
+        const total = subtotal + serviceFee + securityDeposit + deliveryFee;
         
         setPriceBreakdown({
           days: diffDays,
           subtotal,
           serviceFee,
+          deliveryFee,
           securityDeposit,
           total
         });
@@ -175,7 +145,7 @@ const BookingPage = () => {
         setDateError("Maximum rental period is 30 days");
       }
     }
-  }, [bookingData.startDate, bookingData.endDate, dress]);
+  }, [bookingData.startDate, bookingData.endDate, bookingData.deliveryMethod, dress]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -206,7 +176,6 @@ const BookingPage = () => {
       return;
     }
 
-    // Validate address fields
     if (!bookingData.address.trim()) {
       setError("Please enter your delivery address");
       return;
@@ -229,6 +198,11 @@ const BookingPage = () => {
       return;
     }
 
+    if (!agreedToDigitalAgreement) {
+      setError("Please agree to the digital rental agreement");
+      return;
+    }
+
     setIsSubmitting(true);
     setError(null);
 
@@ -248,7 +222,9 @@ const BookingPage = () => {
           address: bookingData.address,
           city: bookingData.city,
           phone: bookingData.phone,
+          deliveryMethod: bookingData.deliveryMethod,
           securityDeposit: 1000,
+          deliveryFee: priceBreakdown.deliveryFee,
           totalAmount: priceBreakdown.total
         })
       });
@@ -260,13 +236,13 @@ const BookingPage = () => {
       }
 
       setBookingSuccess(true);
-      // Reset only date and address fields, keep phone for next time
       setBookingData(prev => ({ 
         startDate: "", 
         endDate: "",
         address: "",
         city: "",
-        phone: prev.phone // Keep phone for next time
+        phone: prev.phone,
+        deliveryMethod: "pickup"
       }));
       window.scrollTo({ top: 0, behavior: "smooth" });
 
@@ -375,7 +351,7 @@ const BookingPage = () => {
             )}
 
             {!user && (
-              <div className="login-warning glass-panel">
+              <div className="login-warning">
                 <i className="ri-information-line"></i>
                 <p>You need to be logged in to book a dress.</p>
                 <Link to="/login" state={{ from: `/booking/${dressId}` }} className="btn-primary">
@@ -389,7 +365,7 @@ const BookingPage = () => {
               <div className="form-group">
                 <label htmlFor="startDate">
                   <i className="ri-calendar-line"></i>
-                  Start Date *
+                  Start Date
                 </label>
                 <input
                   type="date"
@@ -406,7 +382,7 @@ const BookingPage = () => {
               <div className="form-group">
                 <label htmlFor="endDate">
                   <i className="ri-calendar-line"></i>
-                  End Date *
+                  End Date
                 </label>
                 <input
                   type="date"
@@ -431,7 +407,7 @@ const BookingPage = () => {
               <div className="form-group">
                 <label htmlFor="address">
                   <i className="ri-map-pin-line"></i>
-                  Delivery Address *
+                  Delivery Address
                 </label>
                 <input
                   type="text"
@@ -449,7 +425,7 @@ const BookingPage = () => {
                 <div className="form-group half">
                   <label htmlFor="city">
                     <i className="ri-building-line"></i>
-                    City *
+                    City
                   </label>
                   <input
                     type="text"
@@ -466,7 +442,7 @@ const BookingPage = () => {
                 <div className="form-group half">
                   <label htmlFor="phone">
                     <i className="ri-phone-line"></i>
-                    Phone Number *
+                    Phone Number
                   </label>
                   <input
                     type="tel"
@@ -478,6 +454,52 @@ const BookingPage = () => {
                     required
                     disabled={!user || !dress.available || bookingSuccess || backendStatus === 'offline'}
                   />
+                </div>
+              </div>
+
+              {/* Delivery Method Options */}
+              <div className="form-group">
+                <label>Delivery Method</label>
+                <div className="delivery-options">
+                  <label className={`delivery-option ${bookingData.deliveryMethod === 'pickup' ? 'selected' : ''}`}>
+                    <input
+                      type="radio"
+                      name="deliveryMethod"
+                      value="pickup"
+                      checked={bookingData.deliveryMethod === 'pickup'}
+                      onChange={handleChange}
+                      required
+                      disabled={!user || !dress.available || bookingSuccess || backendStatus === 'offline'}
+                    />
+                    <div className="delivery-option-content">
+                      <span className="delivery-option-title">
+                        <i className="ri-store-line"></i>
+                        Self Pickup
+                      </span>
+                      <span className="delivery-option-price">Free</span>
+                      <span className="delivery-option-desc">Pick up from owner's location</span>
+                    </div>
+                  </label>
+                  
+                  <label className={`delivery-option ${bookingData.deliveryMethod === 'delivery' ? 'selected' : ''}`}>
+                    <input
+                      type="radio"
+                      name="deliveryMethod"
+                      value="delivery"
+                      checked={bookingData.deliveryMethod === 'delivery'}
+                      onChange={handleChange}
+                      required
+                      disabled={!user || !dress.available || bookingSuccess || backendStatus === 'offline'}
+                    />
+                    <div className="delivery-option-content">
+                      <span className="delivery-option-title">
+                        <i className="ri-truck-line"></i>
+                        Home Delivery
+                      </span>
+                      <span className="delivery-option-price">+NPR 100</span>
+                      <span className="delivery-option-desc">Delivered to your address</span>
+                    </div>
+                  </label>
                 </div>
               </div>
 
@@ -505,15 +527,30 @@ const BookingPage = () => {
                     disabled={backendStatus === 'offline'}
                   />
                   <span>
-                    I agree to the <Link to="/terms">terms and conditions</Link>. I understand that ₹1000 security deposit will be refunded upon safe return of the dress.
+                    I agree to the <Link to="/terms">terms and conditions</Link>. I understand that NPR 1000 security deposit will be refunded upon safe return of the dress.
+                  </span>
+                </label>
+              </div>
+
+              {/* Digital Agreement */}
+              <div className="digital-agreement">
+                <label className="checkbox-label">
+                  <input
+                    type="checkbox"
+                    checked={agreedToDigitalAgreement}
+                    onChange={(e) => setAgreedToDigitalAgreement(e.target.checked)}
+                    disabled={backendStatus === 'offline'}
+                  />
+                  <span>
+                    I agree to the <Link to="/rental-agreement">digital rental agreement</Link> and understand that this agreement will be stored securely.
                   </span>
                 </label>
               </div>
 
               <button
                 type="submit"
-                className={`btn-primary btn-large ${(!user || !dress.available || isSubmitting || dateError || !bookingData.startDate || !bookingData.endDate || !bookingData.address || !bookingData.city || !bookingData.phone || bookingSuccess || !agreedToTerms || backendStatus === 'offline') ? "disabled" : ""}`}
-                disabled={!user || !dress.available || isSubmitting || dateError || !bookingData.startDate || !bookingData.endDate || !bookingData.address || !bookingData.city || !bookingData.phone || bookingSuccess || !agreedToTerms || backendStatus === 'offline'}
+                className={`btn-primary btn-large ${(!user || !dress.available || isSubmitting || dateError || !bookingData.startDate || !bookingData.endDate || !bookingData.address || !bookingData.city || !bookingData.phone || !bookingData.deliveryMethod || bookingSuccess || !agreedToTerms || !agreedToDigitalAgreement || backendStatus === 'offline') ? "disabled" : ""}`}
+                disabled={!user || !dress.available || isSubmitting || dateError || !bookingData.startDate || !bookingData.endDate || !bookingData.address || !bookingData.city || !bookingData.phone || !bookingData.deliveryMethod || bookingSuccess || !agreedToTerms || !agreedToDigitalAgreement || backendStatus === 'offline'}
               >
                 {isSubmitting ? (
                   <>
@@ -544,13 +581,13 @@ const BookingPage = () => {
                   <p className="summary-category">{dress.category}</p>
                   <div className="summary-specs">
                     <span className="spec-badge">
-                      <i className="ri-ruler-line"></i> Size: {dress.size}
+                      <i className="ri-ruler-line"></i> {dress.size}
                     </span>
                     <span className="spec-badge">
                       <i className="ri-palette-line"></i> {dress.color}
                     </span>
                   </div>
-                  <p className="summary-price">₹{dress.pricePerDay}<span>/day</span></p>
+                  <p className="summary-price">NPR {dress.pricePerDay}<span>/day</span></p>
                 </div>
               </div>
 
@@ -570,26 +607,40 @@ const BookingPage = () => {
                     <span className="price-days">{priceBreakdown.days} days</span>
                   </div>
                   <div className="price-row">
-                    <span>Subtotal (₹{dress.pricePerDay} × {priceBreakdown.days} days)</span>
-                    <span>₹{priceBreakdown.subtotal}</span>
+                    <span>Subtotal (NPR {dress.pricePerDay} × {priceBreakdown.days} days)</span>
+                    <span>NPR {priceBreakdown.subtotal}</span>
                   </div>
                   <div className="price-row">
                     <span>Service Fee (5%)</span>
-                    <span>₹{priceBreakdown.serviceFee}</span>
+                    <span>NPR {priceBreakdown.serviceFee}</span>
                   </div>
+                  
+                  {priceBreakdown.deliveryFee > 0 && (
+                    <div className="price-row">
+                      <span>Delivery Fee</span>
+                      <span>NPR {priceBreakdown.deliveryFee}</span>
+                    </div>
+                  )}
+                  
                   <div className="price-row highlight">
                     <span>Security Deposit (Refundable)</span>
-                    <span className="security-deposit">₹{priceBreakdown.securityDeposit}</span>
+                    <span className="security-deposit">NPR {priceBreakdown.securityDeposit}</span>
                   </div>
                   <div className="price-divider"></div>
                   <div className="price-row total">
                     <span>Total Amount</span>
-                    <span className="total-amount">₹{priceBreakdown.total}</span>
+                    <span className="total-amount">NPR {priceBreakdown.total}</span>
                   </div>
-                  <p className="deposit-note">
-                    <i className="ri-information-line"></i>
-                    Security deposit will be refunded within 5-7 days after return verification
-                  </p>
+                  
+                  {/* Payment Information */}
+                  <div className="payment-info">
+                    <h4>Payment Instructions</h4>
+                    <ul>
+                      <li>Pay the total amount when you receive the dress</li>
+                      <li>The delivery person will collect the payment</li>
+                      <li>Security deposit will be refunded after return verification</li>
+                    </ul>
+                  </div>
                 </>
               ) : (
                 <div className="no-dates-selected">
@@ -602,12 +653,12 @@ const BookingPage = () => {
             <div className="policy-card glass-panel">
               <h3>Booking Policy</h3>
               <ul className="policy-list">
-                <li><i className="ri-check-line"></i> Owner will confirm your booking within 24 hours</li>
+                <li><i className="ri-check-line"></i> Owner confirms booking within 24 hours</li>
                 <li><i className="ri-check-line"></i> Free cancellation up to 48 hours before rental</li>
                 <li><i className="ri-check-line"></i> Professional dry cleaning included</li>
-                <li><i className="ri-check-line"></i> Free delivery within city limits</li>
-                <li><i className="ri-check-line"></i> ₹1000 refundable security deposit</li>
-                <li><i className="ri-check-line"></i> Damage charges deducted from deposit</li>
+                <li><i className="ri-check-line"></i> Self pickup or home delivery available</li>
+                <li><i className="ri-check-line"></i> NPR 1000 refundable security deposit</li>
+                <li><i className="ri-check-line"></i> Digital agreement stored securely</li>
               </ul>
             </div>
           </div>

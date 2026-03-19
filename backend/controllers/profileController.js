@@ -31,13 +31,56 @@ const updateProfile = async (req, res) => {
       return res.status(404).json({ message: "User not found" });
     }
 
-    // Update fields
+    // Update basic fields
     user.name = req.body.name || user.name;
     user.email = req.body.email || user.email;
     user.phone = req.body.phone || user.phone;
     user.address = req.body.address || user.address;
+    user.city = req.body.city || user.city;
     user.bio = req.body.bio || user.bio;
     user.profileImage = req.body.profileImage || user.profileImage;
+
+    // Update bank details if provided
+    if (req.body.bankDetails) {
+      // If bankDetails is sent as JSON string
+      if (typeof req.body.bankDetails === 'string') {
+        try {
+          user.bankDetails = JSON.parse(req.body.bankDetails);
+        } catch (e) {
+          console.error("Error parsing bank details:", e);
+        }
+      } else {
+        // If sent as object
+        user.bankDetails = {
+          accountHolder: req.body.bankDetails.accountHolder || user.bankDetails?.accountHolder || "",
+          bankName: req.body.bankDetails.bankName || user.bankDetails?.bankName || "",
+          accountNumber: req.body.bankDetails.accountNumber || user.bankDetails?.accountNumber || "",
+          ifscCode: req.body.bankDetails.ifscCode || user.bankDetails?.ifscCode || ""
+        };
+      }
+    }
+
+    // Update digital wallet details if provided
+    if (req.body.digitalWallet) {
+      if (typeof req.body.digitalWallet === 'string') {
+        try {
+          user.digitalWallet = JSON.parse(req.body.digitalWallet);
+        } catch (e) {
+          console.error("Error parsing digital wallet:", e);
+        }
+      } else {
+        user.digitalWallet = {
+          provider: req.body.digitalWallet.provider || user.digitalWallet?.provider || "",
+          phoneNumber: req.body.digitalWallet.phoneNumber || user.digitalWallet?.phoneNumber || "",
+          qrCode: req.body.digitalWallet.qrCode || user.digitalWallet?.qrCode || ""
+        };
+      }
+    }
+
+    // Update preferred refund method
+    if (req.body.preferredRefundMethod) {
+      user.preferredRefundMethod = req.body.preferredRefundMethod;
+    }
 
     // If password is being updated
     if (req.body.password) {
@@ -54,11 +97,16 @@ const updateProfile = async (req, res) => {
       role: updatedUser.role,
       phone: updatedUser.phone,
       address: updatedUser.address,
+      city: updatedUser.city,
       bio: updatedUser.bio,
       profileImage: updatedUser.profileImage,
+      bankDetails: updatedUser.bankDetails,
+      digitalWallet: updatedUser.digitalWallet,
+      preferredRefundMethod: updatedUser.preferredRefundMethod,
       createdAt: updatedUser.createdAt
     });
   } catch (error) {
+    console.error("Update profile error:", error);
     res.status(500).json({ message: error.message });
   }
 };
@@ -85,7 +133,7 @@ const uploadProfilePicture = async (req, res) => {
       const oldImagePath = path.join(__dirname, "..", user.profileImage);
       if (fs.existsSync(oldImagePath)) {
         fs.unlinkSync(oldImagePath);
-        console.log("🗑️ Deleted old profile image:", user.profileImage);
+        console.log("Deleted old profile image:", user.profileImage);
       }
     }
 
@@ -94,15 +142,60 @@ const uploadProfilePicture = async (req, res) => {
     user.profileImage = imageUrl;
     await user.save();
 
-    console.log("✅ Profile picture uploaded for user:", user.email);
-    console.log("📸 Image URL:", imageUrl);
+    console.log("Profile picture uploaded for user:", user.email);
+    console.log("Image URL:", imageUrl);
 
     res.json({ 
       message: "Profile picture uploaded successfully",
       profileImage: imageUrl 
     });
   } catch (error) {
-    console.error("❌ Upload error:", error);
+    console.error("Upload error:", error);
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// @desc    Upload QR code for digital wallet
+// @route   POST /api/profile/upload-qr
+// @access  Private
+const uploadQRCode = async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ message: "No file uploaded" });
+    }
+
+    const user = await User.findById(req.user._id);
+    
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // Delete old QR code if it exists
+    if (user.digitalWallet?.qrCode) {
+      const oldQrPath = path.join(__dirname, "..", user.digitalWallet.qrCode);
+      if (fs.existsSync(oldQrPath)) {
+        fs.unlinkSync(oldQrPath);
+        console.log("Deleted old QR code:", user.digitalWallet.qrCode);
+      }
+    }
+
+    // Update user with new QR code path
+    const qrUrl = `/uploads/qrcodes/${req.file.filename}`;
+    
+    if (!user.digitalWallet) {
+      user.digitalWallet = {};
+    }
+    user.digitalWallet.qrCode = qrUrl;
+    await user.save();
+
+    console.log("QR code uploaded for user:", user.email);
+
+    res.json({ 
+      message: "QR code uploaded successfully",
+      qrCode: qrUrl 
+    });
+  } catch (error) {
+    console.error("QR upload error:", error);
     res.status(500).json({ message: error.message });
   }
 };
@@ -229,11 +322,12 @@ const getUserActivity = async (req, res) => {
   }
 };
 
-//EXPORT ALL FUNCTIONS - INCLUDING THE NEW ONE
+// EXPORT ALL FUNCTIONS
 module.exports = {
   getProfile,
   updateProfile,
-  uploadProfilePicture, 
+  uploadProfilePicture,
+  uploadQRCode,
   getUserStats,
   getUserActivity
 };

@@ -2,83 +2,85 @@ const multer = require("multer");
 const path = require("path");
 const fs = require("fs");
 
-// Create uploads/profiles directory if it doesn't exist
+// Create upload directories if they don't exist
 const profilesDir = path.join(__dirname, "../uploads/profiles");
+const qrCodesDir = path.join(__dirname, "../uploads/qrcodes");
+
 if (!fs.existsSync(profilesDir)) {
   fs.mkdirSync(profilesDir, { recursive: true });
-  console.log("✅ Created uploads/profiles directory");
+  console.log("Created profiles directory");
+}
+
+if (!fs.existsSync(qrCodesDir)) {
+  fs.mkdirSync(qrCodesDir, { recursive: true });
+  console.log("Created QR codes directory");
 }
 
 // Configure storage for profile pictures
 const profileStorage = multer.diskStorage({
   destination: function (req, file, cb) {
-    cb(null, "uploads/profiles/");
+    cb(null, profilesDir);
   },
   filename: function (req, file, cb) {
-    // Create unique filename with timestamp
     const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
     const ext = path.extname(file.originalname);
-    const filename = "profile-" + uniqueSuffix + ext;
-    console.log("📸 Saving profile image as:", filename);
-    cb(null, filename);
-  },
+    cb(null, "profile-" + uniqueSuffix + ext);
+  }
 });
 
-// File filter to only allow images
-const imageFilter = (req, file, cb) => {
-  const allowedTypes = /jpeg|jpg|png|gif|webp/;
-  
-  // Check file extension
-  const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
-  
-  // Check mime type
-  const mimetype = allowedTypes.test(file.mimetype);
+// Configure storage for QR codes
+const qrStorage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, qrCodesDir);
+  },
+  filename: function (req, file, cb) {
+    const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
+    const ext = path.extname(file.originalname);
+    cb(null, "qr-" + uniqueSuffix + ext);
+  }
+});
 
-  console.log("📁 Uploading file:", {
-    originalname: file.originalname,
-    mimetype: file.mimetype,
-    extname: path.extname(file.originalname),
-    isValid: mimetype && extname
-  });
+// File filter for images
+const fileFilter = (req, file, cb) => {
+  const allowedTypes = /jpeg|jpg|png|gif|webp/;
+  const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
+  const mimetype = allowedTypes.test(file.mimetype);
 
   if (mimetype && extname) {
     return cb(null, true);
   } else {
-    cb(new Error("Only image files are allowed (jpeg, jpg, png, gif, webp)"));
+    cb(new Error("Only image files are allowed (JPEG, PNG, GIF, WEBP)"));
   }
 };
 
-// Multer configuration for profile picture uploads
+// Create multer upload instances
 const uploadProfilePicture = multer({
   storage: profileStorage,
-  limits: { 
-    fileSize: 5 * 1024 * 1024 // 5MB limit
-  },
-  fileFilter: imageFilter,
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
+  fileFilter: fileFilter
+});
+
+const uploadQRCode = multer({
+  storage: qrStorage,
+  limits: { fileSize: 2 * 1024 * 1024 }, // 2MB limit
+  fileFilter: fileFilter
 });
 
 // Error handling middleware for multer
 const handleProfileUploadError = (err, req, res, next) => {
   if (err instanceof multer.MulterError) {
-    // A Multer error occurred when uploading
     if (err.code === "LIMIT_FILE_SIZE") {
-      return res.status(400).json({ 
-        message: "File too large. Maximum size is 5MB." 
-      });
+      return res.status(400).json({ message: "File too large. Maximum size is 5MB." });
     }
-    return res.status(400).json({ 
-      message: `Upload error: ${err.message}` 
-    });
+    return res.status(400).json({ message: err.message });
   } else if (err) {
-    // An unknown error occurred
-    return res.status(400).json({ 
-      message: err.message || "File upload failed" 
-    });
+    return res.status(400).json({ message: err.message });
   }
   next();
 };
 
 module.exports = {
   uploadProfilePicture,
+  uploadQRCode,
   handleProfileUploadError
 };

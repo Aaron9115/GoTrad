@@ -807,3 +807,98 @@
     gap: 10px;
   }
 }
+
+/* Delete Button */
+.btn-delete {
+  padding: 8px 16px;
+  background: #f3f4f6;
+  color: #4b5563;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-weight: 500;
+  font-size: 0.9rem;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: all 0.2s;
+}
+
+.btn-delete:hover:not(:disabled) {
+  background: #ef4444;
+  color: white;
+  border-color: #ef4444;
+}
+
+.btn-delete:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Update booking actions to accommodate more buttons */
+.booking-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 15px;
+  flex-wrap: wrap;
+}
+
+@media (max-width: 640px) {
+  .booking-actions {
+    flex-direction: column;
+  }
+  
+  .btn-outline-small,
+  .btn-cancel,
+  .btn-return,
+  .btn-view-return,
+  .btn-delete {
+    width: 100%;
+    justify-content: center;
+  }
+}
+/* Review Button */
+.btn-review {
+  padding: 8px 16px;
+  background: #8b5cf6;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-weight: 500;
+  font-size: 0.9rem;
+  cursor: pointer;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: background 0.2s;
+}
+
+.btn-review:hover {
+  background: #7c3aed;
+}
+
+/* Update booking actions to fit all buttons */
+.booking-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 15px;
+  flex-wrap: wrap;
+}
+
+@media (max-width: 640px) {
+  .booking-actions {
+    flex-direction: column;
+  }
+  
+  .btn-outline-small,
+  .btn-cancel,
+  .btn-return,
+  .btn-view-return,
+  .btn-review,
+  .btn-delete {
+    width: 100%;
+    justify-content: center;
+  }
+}

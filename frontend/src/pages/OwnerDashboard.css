@@ -944,3 +944,228 @@
     width: 100%;
   }
 }
+
+
+/* Toggle Details Button */
+.toggle-details-btn {
+  width: 100%;
+  margin-top: 15px;
+  padding: 10px;
+  background: transparent;
+  border: 1px dashed #0284c7;
+  border-radius: 8px;
+  color: #0284c7;
+  font-weight: 500;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: all 0.2s;
+}
+
+.toggle-details-btn:hover {
+  background: #f0f9ff;
+  border-color: #0284c7;
+}
+
+/* Expanded Renter Details */
+.renter-details-expanded {
+  margin-top: 20px;
+  padding: 16px;
+  background: #f8fafc;
+  border-radius: 12px;
+  border-left: 4px solid #0284c7;
+}
+
+.renter-details-expanded h4 {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #0c4a6e;
+  margin-bottom: 12px;
+}
+
+.renter-details-expanded h5 {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #1f2937;
+  margin: 12px 0 8px;
+}
+
+.renter-info-section {
+  margin-bottom: 12px;
+}
+
+.renter-info-section p {
+  margin: 4px 0;
+  color: #4b5563;
+}
+
+.refund-method-badge {
+  margin: 12px 0;
+  padding: 8px 12px;
+  background: #f0f9ff;
+  border-radius: 6px;
+}
+
+.method-badge {
+  display: inline-block;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-weight: 600;
+  text-transform: capitalize;
+  margin-left: 8px;
+}
+
+.method-badge.bank {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+.method-badge.digital_wallet {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.bank-details,
+.wallet-details {
+  background: white;
+  padding: 12px;
+  border-radius: 8px;
+  margin-top: 8px;
+}
+
+.bank-details p,
+.wallet-details p {
+  margin: 6px 0;
+  color: #4b5563;
+}
+
+.qr-code-preview {
+  margin-top: 10px;
+}
+
+.qr-thumbnail {
+  max-width: 100px;
+  max-height: 100px;
+  border: 2px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 4px;
+  margin-top: 5px;
+}
+
+.no-details-message {
+  margin-top: 10px;
+  padding: 10px;
+  background: #fef3c7;
+  border-radius: 6px;
+  color: #92400e;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+
+/* Active Bookings Tab */
+.ending-soon {
+  border-left: 4px solid #f59e0b !important;
+}
+
+.ending-soon-badge {
+  background: #fef3c7;
+  color: #92400e;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin: 8px 0;
+}
+
+.date-range {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 12px;
+  background: #f8fafc;
+  border-radius: 8px;
+  margin: 8px 0;
+}
+
+.start-date, .end-date {
+  font-size: 0.9rem;
+  color: #1f2937;
+}
+
+.start-date {
+  border-bottom: 1px dashed #e2e8f0;
+  padding-bottom: 4px;
+}
+
+.btn-return-ready {
+  flex: 2;
+  padding: 10px;
+  background: #f59e0b;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 0.9rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: all 0.2s;
+}
+
+.btn-return-ready:hover:not(:disabled) {
+  background: #d97706;
+}
+
+.btn-return-ready:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-contact {
+  flex: 1;
+  padding: 10px;
+  background: #f3f4f6;
+  color: #4b5563;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  font-weight: 500;
+  font-size: 0.9rem;
+  cursor: pointer;
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: all 0.2s;
+}
+
+.btn-contact:hover {
+  background: #e5e7eb;
+}
+
+/* Updated booking status for active */
+.booking-status.active {
+  background: #10b981;
+  color: white;
+}
+
+/* Responsive */
+@media (max-width: 640px) {
+  .booking-actions {
+    flex-direction: column;
+  }
+  
+  .btn-return-ready,
+  .btn-contact {
+    width: 100%;
+  }
+}

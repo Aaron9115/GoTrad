@@ -13,7 +13,7 @@ import MyBookings from "./pages/MyBookings";
 import ReturnPage from "./pages/ReturnPage";
 import OwnerReturnReview from "./pages/OwnerReturnReview";
 import VirtualTryOn from "./pages/VirtualTryOn";
-
+import ReviewsPage from "./pages/ReviewsPage";
 // Protected Route Component
 const ProtectedRoute = ({ children, allowedRoles = [] }) => {
   const user = JSON.parse(localStorage.getItem("user"));
@@ -43,6 +43,7 @@ function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
         <Route path="/virtual-tryon" element={<VirtualTryOn />} />
+        <Route path="/reviews/:dressId" element={<ReviewsPage />} />
         {/* Protected Routes */}
         <Route path="/profile" element={
           <ProtectedRoute>

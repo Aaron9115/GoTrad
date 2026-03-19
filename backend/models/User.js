@@ -20,12 +20,15 @@ const userSchema = new mongoose.Schema(
       enum: ["owner", "renter", "admin"],
       default: "renter"
     },
- 
     phone: {
       type: String,
       default: ""
     },
     address: {
+      type: String,
+      default: ""
+    },
+    city: {
       type: String,
       default: ""
     },
@@ -36,6 +39,29 @@ const userSchema = new mongoose.Schema(
     profileImage: {
       type: String,
       default: "https://via.placeholder.com/150"
+    },
+    // Bank Details for Refunds
+    bankDetails: {
+      accountHolder: { type: String, default: "" },
+      bankName: { type: String, default: "" },
+      accountNumber: { type: String, default: "" },
+      ifscCode: { type: String, default: "" }
+    },
+    // Digital Wallet Details (eSewa/Fonepay/Khalti)
+    digitalWallet: {
+      provider: { 
+        type: String, 
+        enum: ["esewa", "fonepay", "khalti", ""], 
+        default: "" 
+      },
+      phoneNumber: { type: String, default: "" },
+      qrCode: { type: String, default: "" } // URL to uploaded QR code image
+    },
+    // Preferred refund method
+    preferredRefundMethod: {
+      type: String,
+      enum: ["bank", "digital_wallet", "cash"],
+      default: "bank"
     }
   },
   { timestamps: true }

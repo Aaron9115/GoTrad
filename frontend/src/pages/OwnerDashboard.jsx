@@ -10,9 +10,11 @@ const OwnerDashboard = () => {
   const [activeTab, setActiveTab] = useState("my-dresses");
   const [dresses, setDresses] = useState([]);
   const [pendingBookings, setPendingBookings] = useState([]);
+  const [activeBookings, setActiveBookings] = useState([]);
   const [pendingReturns, setPendingReturns] = useState([]);
   const [loading, setLoading] = useState(true);
   const [bookingsLoading, setBookingsLoading] = useState(false);
+  const [activeBookingsLoading, setActiveBookingsLoading] = useState(false);
   const [returnsLoading, setReturnsLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
@@ -40,6 +42,10 @@ const OwnerDashboard = () => {
   
   // Booking confirmation state
   const [processingBooking, setProcessingBooking] = useState(null);
+  // Track expanded renter details
+  const [expandedRenter, setExpandedRenter] = useState(null);
+  // Track expanded active renter details
+  const [expandedActiveRenter, setExpandedActiveRenter] = useState(null);
 
   // ========== CHECK USER AUTHENTICATION ==========
   useEffect(() => {
@@ -61,6 +67,7 @@ const OwnerDashboard = () => {
       setUser(parsedUser);
       fetchMyDresses();
       fetchPendingBookings();
+      fetchActiveBookings();
       fetchPendingReturns();
     } catch (err) {
       console.error("Error parsing user data:", err);
@@ -122,6 +129,37 @@ const OwnerDashboard = () => {
     }
   };
 
+  // ========== FETCH ACTIVE BOOKINGS (confirmed) ==========
+  const fetchActiveBookings = async () => {
+    try {
+      setActiveBookingsLoading(true);
+      const token = localStorage.getItem("token");
+      
+      const response = await fetch("http://localhost:5000/api/booking/owner", {
+        headers: {
+          "Authorization": `Bearer ${token}`
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        // Filter only confirmed/booked bookings that are not completed
+        const active = data.filter(b => 
+          (b.status === "confirmed" || b.status === "booked") && 
+          new Date(b.endDate) >= new Date()
+        );
+        setActiveBookings(active);
+      } else {
+        setActiveBookings([]);
+      }
+    } catch (err) {
+      console.error("Error fetching active bookings:", err);
+      setActiveBookings([]);
+    } finally {
+      setActiveBookingsLoading(false);
+    }
+  };
+
   // ========== FETCH PENDING RETURNS FROM BACKEND ==========
   const fetchPendingReturns = async () => {
     try {
@@ -173,10 +211,9 @@ const OwnerDashboard = () => {
 
       setSuccess("Booking confirmed successfully!");
       
-      // Refresh pending bookings
+      // Refresh all lists
       await fetchPendingBookings();
-      
-      // Also refresh dresses in case availability changed
+      await fetchActiveBookings();
       await fetchMyDresses();
       
       setTimeout(() => setSuccess(""), 3000);
@@ -216,7 +253,6 @@ const OwnerDashboard = () => {
 
       setSuccess("Booking rejected");
       
-      // Refresh pending bookings
       await fetchPendingBookings();
       
       setTimeout(() => setSuccess(""), 3000);
@@ -226,6 +262,19 @@ const OwnerDashboard = () => {
     } finally {
       setProcessingBooking(null);
     }
+  };
+
+  // ========== HANDLE MARK AS READY FOR RETURN ==========
+  const handleMarkAsReturnReady = async (bookingId) => {
+    if (!window.confirm("Has the rental period ended? The renter can now initiate return.")) {
+      return;
+    }
+
+    // This would need a backend endpoint to update booking status
+    // For now, we'll just show a message and redirect to returns
+    setSuccess("Please ask renter to initiate return from their dashboard");
+    
+    setTimeout(() => setSuccess(""), 3000);
   };
 
   // ========== HANDLE FORM INPUT CHANGE ==========
@@ -578,7 +627,7 @@ const OwnerDashboard = () => {
     }
   };
 
-  // ========== FORMAT PRICE WITH COMMAS ==========
+  // ========== FORMAT PRICE WITH NPR ==========
   const formatPrice = (price) => {
     return new Intl.NumberFormat("en-IN").format(price);
   };
@@ -587,6 +636,33 @@ const OwnerDashboard = () => {
   const formatDate = (dateString) => {
     const options = { year: 'numeric', month: 'short', day: 'numeric' };
     return new Date(dateString).toLocaleDateString(undefined, options);
+  };
+
+  // ========== TOGGLE RENTER DETAILS ==========
+  const toggleRenterDetails = (bookingId) => {
+    if (expandedRenter === bookingId) {
+      setExpandedRenter(null);
+    } else {
+      setExpandedRenter(bookingId);
+    }
+  };
+
+  // ========== TOGGLE ACTIVE RENTER DETAILS ==========
+  const toggleActiveRenterDetails = (bookingId) => {
+    if (expandedActiveRenter === bookingId) {
+      setExpandedActiveRenter(null);
+    } else {
+      setExpandedActiveRenter(bookingId);
+    }
+  };
+
+  // ========== CHECK IF RENTAL IS ENDING SOON ==========
+  const isEndingSoon = (endDate) => {
+    const today = new Date();
+    const end = new Date(endDate);
+    const diffTime = end - today;
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return diffDays <= 2 && diffDays >= 0;
   };
 
   return (
@@ -638,21 +714,31 @@ const OwnerDashboard = () => {
             Add New Dress
           </button>
           <button 
-            className={`tab-btn ${activeTab === "bookings" ? "active" : ""}`}
+            className={`tab-btn ${activeTab === "pending" ? "active" : ""}`}
             onClick={() => {
-              setActiveTab("bookings");
+              setActiveTab("pending");
               fetchPendingBookings();
             }}
           >
+            <i className="ri-time-line"></i>
+            Pending ({pendingBookings.length})
+          </button>
+          <button 
+            className={`tab-btn ${activeTab === "active" ? "active" : ""}`}
+            onClick={() => {
+              setActiveTab("active");
+              fetchActiveBookings();
+            }}
+          >
             <i className="ri-calendar-check-line"></i>
-            Pending Bookings ({pendingBookings.length})
+            Active ({activeBookings.length})
           </button>
           <button 
             className={`tab-btn ${activeTab === "returns" ? "active" : ""}`}
             onClick={() => setActiveTab("returns")}
           >
             <i className="ri-arrow-return-line"></i>
-            Pending Returns ({pendingReturns.length})
+            Returns ({pendingReturns.length})
           </button>
         </div>
 
@@ -705,7 +791,7 @@ const OwnerDashboard = () => {
                       </div>
                       
                       <div className="dress-price">
-                        ₹{formatPrice(dress.price)} <span>/day</span>
+                        NPR {formatPrice(dress.price)} <span>/day</span>
                       </div>
                       
                       {dress.description && (
@@ -840,7 +926,7 @@ const OwnerDashboard = () => {
                   <div className="form-group">
                     <label htmlFor="price">
                       <i className="ri-money-rupee-circle-line"></i>
-                      Price per day (₹) *
+                      Price per day (NPR) *
                     </label>
                     <input
                       type="number"
@@ -979,7 +1065,7 @@ const OwnerDashboard = () => {
         )}
 
         {/* ========== PENDING BOOKINGS TAB ========== */}
-        {activeTab === "bookings" && (
+        {activeTab === "pending" && (
           <div className="bookings-tab">
             <h2 className="tab-heading">Pending Bookings</h2>
             {bookingsLoading ? (
@@ -989,7 +1075,7 @@ const OwnerDashboard = () => {
               </div>
             ) : pendingBookings.length === 0 ? (
               <div className="empty-state">
-                <i className="ri-calendar-line"></i>
+                <i className="ri-time-line"></i>
                 <h3>No pending bookings</h3>
                 <p>When renters book your dresses, they'll appear here</p>
               </div>
@@ -1023,7 +1109,7 @@ const OwnerDashboard = () => {
                       </div>
                       <div className="detail-row">
                         <i className="ri-map-pin-line"></i>
-                        <strong>Address:</strong> {booking.deliveryAddress?.address}, {booking.deliveryAddress?.city}
+                        <strong>Delivery Address:</strong> {booking.deliveryAddress?.address}, {booking.deliveryAddress?.city}
                       </div>
                       <div className="detail-row">
                         <i className="ri-calendar-line"></i>
@@ -1031,8 +1117,103 @@ const OwnerDashboard = () => {
                       </div>
                       <div className="detail-row">
                         <i className="ri-money-rupee-circle-line"></i>
-                        <strong>Total Amount:</strong> ₹{booking.totalAmount}
+                        <strong>Total Amount:</strong> NPR {formatPrice(booking.totalAmount)}
                       </div>
+                      
+                      {/* Toggle Renter Details Button */}
+                      <button 
+                        className="toggle-details-btn"
+                        onClick={() => toggleRenterDetails(booking._id)}
+                      >
+                        <i className={`ri-arrow-${expandedRenter === booking._id ? 'up' : 'down'}-s-line`}></i>
+                        {expandedRenter === booking._id ? 'Hide Refund Details' : 'View Refund Details'}
+                      </button>
+
+                      {/* Expanded Renter Details */}
+                      {expandedRenter === booking._id && booking.renter && (
+                        <div className="renter-details-expanded">
+                          <h4>Renter Refund Information</h4>
+                          
+                          <div className="renter-info-section">
+                            <p><strong>Email:</strong> {booking.renter.email || 'Not provided'}</p>
+                            <p><strong>City:</strong> {booking.renter.city || 'Not provided'}</p>
+                          </div>
+
+                          <div className="refund-method-badge">
+                            <strong>Preferred Refund Method:</strong>{' '}
+                            <span className={`method-badge ${booking.renter.preferredRefundMethod || 'none'}`}>
+                              {booking.renter.preferredRefundMethod === 'bank' ? 'Bank Transfer' : 
+                               booking.renter.preferredRefundMethod === 'digital_wallet' ? 'Digital Wallet' : 
+                               booking.renter.preferredRefundMethod === 'cash' ? 'Cash' : 'Not specified'}
+                            </span>
+                          </div>
+
+                          {/* Bank Details */}
+                          {booking.renter.preferredRefundMethod === 'bank' && booking.renter.bankDetails && (
+                            <div className="bank-details">
+                              <h5>Bank Account Details</h5>
+                              {booking.renter.bankDetails.accountHolder ? (
+                                <p><strong>Account Holder:</strong> {booking.renter.bankDetails.accountHolder}</p>
+                              ) : (
+                                <p className="text-muted">Account holder name not provided</p>
+                              )}
+                              {booking.renter.bankDetails.bankName ? (
+                                <p><strong>Bank Name:</strong> {booking.renter.bankDetails.bankName}</p>
+                              ) : (
+                                <p className="text-muted">Bank name not provided</p>
+                              )}
+                              {booking.renter.bankDetails.accountNumber ? (
+                                <p><strong>Account Number:</strong> {booking.renter.bankDetails.accountNumber}</p>
+                              ) : (
+                                <p className="text-muted">Account number not provided</p>
+                              )}
+                              {booking.renter.bankDetails.ifscCode && (
+                                <p><strong>IFSC Code:</strong> {booking.renter.bankDetails.ifscCode}</p>
+                              )}
+                            </div>
+                          )}
+
+                          {/* Digital Wallet Details */}
+                          {booking.renter.preferredRefundMethod === 'digital_wallet' && booking.renter.digitalWallet && (
+                            <div className="wallet-details">
+                              <h5>Digital Wallet Details</h5>
+                              {booking.renter.digitalWallet.provider ? (
+                                <p><strong>Provider:</strong> {booking.renter.digitalWallet.provider}</p>
+                              ) : (
+                                <p className="text-muted">Provider not specified</p>
+                              )}
+                              {booking.renter.digitalWallet.phoneNumber ? (
+                                <p><strong>Phone Number:</strong> {booking.renter.digitalWallet.phoneNumber}</p>
+                              ) : (
+                                <p className="text-muted">Phone number not provided</p>
+                              )}
+                              {booking.renter.digitalWallet.qrCode && (
+                                <div className="qr-code-preview">
+                                  <p><strong>QR Code:</strong></p>
+                                  <img 
+                                    src={booking.renter.digitalWallet.qrCode.startsWith('http') ? booking.renter.digitalWallet.qrCode : `http://localhost:5000${booking.renter.digitalWallet.qrCode}`} 
+                                    alt="Payment QR Code"
+                                    className="qr-thumbnail"
+                                    onError={(e) => {
+                                      e.target.onerror = null;
+                                      e.target.style.display = 'none';
+                                    }}
+                                  />
+                                </div>
+                              )}
+                            </div>
+                          )}
+
+                          {/* Show message if no details provided */}
+                          {(!booking.renter.bankDetails || Object.keys(booking.renter.bankDetails).every(key => !booking.renter.bankDetails[key])) && 
+                           (!booking.renter.digitalWallet || Object.keys(booking.renter.digitalWallet).every(key => !booking.renter.digitalWallet[key])) && (
+                            <p className="no-details-message">
+                              <i className="ri-information-line"></i>
+                              The renter hasn't added their refund details yet. They can add them in their profile.
+                            </p>
+                          )}
+                        </div>
+                      )}
                     </div>
 
                     <div className="booking-actions">
@@ -1064,6 +1245,195 @@ const OwnerDashboard = () => {
                     </div>
                   </div>
                 ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ========== ACTIVE BOOKINGS TAB ========== */}
+        {activeTab === "active" && (
+          <div className="bookings-tab">
+            <h2 className="tab-heading">Active Rentals</h2>
+            {activeBookingsLoading ? (
+              <div className="loading-state">
+                <div className="spinner"></div>
+                <p>Loading active rentals...</p>
+              </div>
+            ) : activeBookings.length === 0 ? (
+              <div className="empty-state">
+                <i className="ri-calendar-check-line"></i>
+                <h3>No active rentals</h3>
+                <p>When you confirm bookings, they'll appear here</p>
+              </div>
+            ) : (
+              <div className="bookings-grid">
+                {activeBookings.map((booking) => {
+                  const endingSoon = isEndingSoon(booking.endDate);
+                  return (
+                    <div key={booking._id} className={`booking-card ${endingSoon ? 'ending-soon' : ''}`}>
+                      <div className="booking-header">
+                        <div className="booking-dress-info">
+                          <img 
+                            src={booking.dress?.image || "https://images.unsplash.com/photo-1583391733956-3750e0ff4e8b?w=100&q=80"} 
+                            alt={booking.dress?.name}
+                            className="booking-dress-image"
+                          />
+                          <div>
+                            <h3>{booking.dress?.name}</h3>
+                            <p className="booking-dress-category">{booking.dress?.category}</p>
+                          </div>
+                        </div>
+                        <span className="booking-status active">Active</span>
+                      </div>
+
+                      <div className="booking-details">
+                        <div className="detail-row">
+                          <i className="ri-user-line"></i>
+                          <strong>Renter:</strong> {booking.renter?.name}
+                        </div>
+                        <div className="detail-row">
+                          <i className="ri-phone-line"></i>
+                          <strong>Phone:</strong> {booking.deliveryAddress?.phone}
+                        </div>
+                        <div className="detail-row">
+                          <i className="ri-map-pin-line"></i>
+                          <strong>Address:</strong> {booking.deliveryAddress?.address}, {booking.deliveryAddress?.city}
+                        </div>
+                        <div className="detail-row">
+                          <i className="ri-calendar-line"></i>
+                          <strong>Rental Period:</strong>
+                        </div>
+                        <div className="date-range">
+                          <span className="start-date">From: {formatDate(booking.startDate)}</span>
+                          <span className="end-date">To: {formatDate(booking.endDate)}</span>
+                        </div>
+                        {endingSoon && (
+                          <div className="ending-soon-badge">
+                            <i className="ri-alert-line"></i>
+                            Rental ending soon!
+                          </div>
+                        )}
+                        <div className="detail-row">
+                          <i className="ri-money-rupee-circle-line"></i>
+                          <strong>Total Paid:</strong> NPR {formatPrice(booking.totalAmount)}
+                        </div>
+                        
+                        {/* Toggle Renter Details Button */}
+                        <button 
+                          className="toggle-details-btn"
+                          onClick={() => toggleActiveRenterDetails(booking._id)}
+                        >
+                          <i className={`ri-arrow-${expandedActiveRenter === booking._id ? 'up' : 'down'}-s-line`}></i>
+                          {expandedActiveRenter === booking._id ? 'Hide Refund Details' : 'View Refund Details'}
+                        </button>
+
+                        {/* Expanded Renter Details */}
+                        {expandedActiveRenter === booking._id && booking.renter && (
+                          <div className="renter-details-expanded">
+                            <h4>Renter Refund Information</h4>
+                            
+                            <div className="renter-info-section">
+                              <p><strong>Email:</strong> {booking.renter.email || 'Not provided'}</p>
+                              <p><strong>City:</strong> {booking.renter.city || 'Not provided'}</p>
+                            </div>
+
+                            <div className="refund-method-badge">
+                              <strong>Preferred Refund Method:</strong>{' '}
+                              <span className={`method-badge ${booking.renter.preferredRefundMethod || 'none'}`}>
+                                {booking.renter.preferredRefundMethod === 'bank' ? 'Bank Transfer' : 
+                                 booking.renter.preferredRefundMethod === 'digital_wallet' ? 'Digital Wallet' : 
+                                 booking.renter.preferredRefundMethod === 'cash' ? 'Cash' : 'Not specified'}
+                              </span>
+                            </div>
+
+                            {/* Bank Details */}
+                            {booking.renter.preferredRefundMethod === 'bank' && booking.renter.bankDetails && (
+                              <div className="bank-details">
+                                <h5>Bank Account Details</h5>
+                                {booking.renter.bankDetails.accountHolder ? (
+                                  <p><strong>Account Holder:</strong> {booking.renter.bankDetails.accountHolder}</p>
+                                ) : (
+                                  <p className="text-muted">Account holder name not provided</p>
+                                )}
+                                {booking.renter.bankDetails.bankName ? (
+                                  <p><strong>Bank Name:</strong> {booking.renter.bankDetails.bankName}</p>
+                                ) : (
+                                  <p className="text-muted">Bank name not provided</p>
+                                )}
+                                {booking.renter.bankDetails.accountNumber ? (
+                                  <p><strong>Account Number:</strong> {booking.renter.bankDetails.accountNumber}</p>
+                                ) : (
+                                  <p className="text-muted">Account number not provided</p>
+                                )}
+                                {booking.renter.bankDetails.ifscCode && (
+                                  <p><strong>IFSC Code:</strong> {booking.renter.bankDetails.ifscCode}</p>
+                                )}
+                              </div>
+                            )}
+
+                            {/* Digital Wallet Details */}
+                            {booking.renter.preferredRefundMethod === 'digital_wallet' && booking.renter.digitalWallet && (
+                              <div className="wallet-details">
+                                <h5>Digital Wallet Details</h5>
+                                {booking.renter.digitalWallet.provider ? (
+                                  <p><strong>Provider:</strong> {booking.renter.digitalWallet.provider}</p>
+                                ) : (
+                                  <p className="text-muted">Provider not specified</p>
+                                )}
+                                {booking.renter.digitalWallet.phoneNumber ? (
+                                  <p><strong>Phone Number:</strong> {booking.renter.digitalWallet.phoneNumber}</p>
+                                ) : (
+                                  <p className="text-muted">Phone number not provided</p>
+                                )}
+                                {booking.renter.digitalWallet.qrCode && (
+                                  <div className="qr-code-preview">
+                                    <p><strong>QR Code:</strong></p>
+                                    <img 
+                                      src={booking.renter.digitalWallet.qrCode.startsWith('http') ? booking.renter.digitalWallet.qrCode : `http://localhost:5000${booking.renter.digitalWallet.qrCode}`} 
+                                      alt="Payment QR Code"
+                                      className="qr-thumbnail"
+                                      onError={(e) => {
+                                        e.target.onerror = null;
+                                        e.target.style.display = 'none';
+                                      }}
+                                    />
+                                  </div>
+                                )}
+                              </div>
+                            )}
+
+                            {/* Show message if no details provided */}
+                            {(!booking.renter.bankDetails || Object.keys(booking.renter.bankDetails).every(key => !booking.renter.bankDetails[key])) && 
+                             (!booking.renter.digitalWallet || Object.keys(booking.renter.digitalWallet).every(key => !booking.renter.digitalWallet[key])) && (
+                              <p className="no-details-message">
+                                <i className="ri-information-line"></i>
+                                The renter hasn't added their refund details yet. They can add them in their profile.
+                              </p>
+                            )}
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="booking-actions">
+                        <button 
+                          className="btn-return-ready"
+                          onClick={() => handleMarkAsReturnReady(booking._id)}
+                          disabled={processingBooking === booking._id}
+                        >
+                          <i className="ri-arrow-return-line"></i>
+                          Mark Return Ready
+                        </button>
+                        <button 
+                          className="btn-contact"
+                          onClick={() => window.location.href = `mailto:${booking.renter?.email}`}
+                        >
+                          <i className="ri-message-line"></i>
+                          Contact Renter
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>
@@ -1222,7 +1592,7 @@ const OwnerDashboard = () => {
 
                 <div className="form-row">
                   <div className="form-group">
-                    <label htmlFor="edit-price">Price (₹) *</label>
+                    <label htmlFor="edit-price">Price (NPR) *</label>
                     <input
                       type="number"
                       id="edit-price"
