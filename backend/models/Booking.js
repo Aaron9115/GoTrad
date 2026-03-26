@@ -47,6 +47,26 @@ const bookingSchema = new mongoose.Schema(
       default: 1000
     },
     
+    // Refund details for the renter
+    refundDetails: {
+      preferredMethod: {
+        type: String,
+        enum: ["bank", "digital_wallet"],
+        default: "bank"
+      },
+      bankDetails: {
+        accountHolder: { type: String, default: "" },
+        bankName: { type: String, default: "" },
+        accountNumber: { type: String, default: "" },
+        ifscCode: { type: String, default: "" }
+      },
+      digitalWallet: {
+        provider: { type: String, default: "" },
+        phoneNumber: { type: String, default: "" },
+        qrCode: { type: String, default: "" }
+      }
+    },
+    
     // Current status of the booking
     status: { 
       type: String, 
@@ -73,6 +93,24 @@ const bookingSchema = new mongoose.Schema(
     returnInfo: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Return"
+    },
+    
+    // Refund status
+    refundStatus: {
+      type: String,
+      enum: ["pending", "processing", "completed", "failed"],
+      default: "pending"
+    },
+    
+    // Refund amount
+    refundAmount: {
+      type: Number,
+      default: 0
+    },
+    
+    // Refund processed date
+    refundProcessedAt: {
+      type: Date
     }
   },
   { 

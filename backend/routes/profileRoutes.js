@@ -2,8 +2,8 @@ const express = require("express");
 const {
   getProfile,
   updateProfile,
-  uploadProfilePicture,
-  uploadQRCode,
+  uploadProfilePicture,  // This is the controller function
+  uploadQRCode,          // This is the controller function
   getUserStats,
   getUserActivity
 } = require("../controllers/profileController");
@@ -65,14 +65,14 @@ const fileFilter = (req, file, cb) => {
   }
 };
 
-// Create multer upload instances
-const uploadProfilePicture = multer({
+// Create multer upload instances with DIFFERENT names (not conflicting with controller)
+const uploadProfileMiddleware = multer({
   storage: profileStorage,
   limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
   fileFilter: fileFilter
 });
 
-const uploadQRCode = multer({
+const uploadQRMiddleware = multer({
   storage: qrStorage,
   limits: { fileSize: 2 * 1024 * 1024 }, // 2MB limit
   fileFilter: fileFilter
@@ -99,20 +99,20 @@ router.route("/")
   .get(getProfile)
   .put(updateProfile);
 
-// Upload profile picture
+// Upload profile picture - using renamed middleware
 router.post(
   "/upload-picture", 
-  uploadProfilePicture.single("profileImage"), 
+  uploadProfileMiddleware.single("profileImage"), 
   handleUploadError,
-  uploadProfilePicture
+  uploadProfilePicture  // This is the controller function
 );
 
-// Upload QR code for digital wallet
+// Upload QR code for digital wallet - using renamed middleware
 router.post(
   "/upload-qr", 
-  uploadQRCode.single("qrCode"), 
+  uploadQRMiddleware.single("qrCode"), 
   handleUploadError,
-  uploadQRCode
+  uploadQRCode  // This is the controller function
 );
 
 // Get user statistics

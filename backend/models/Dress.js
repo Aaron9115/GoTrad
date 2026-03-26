@@ -3,7 +3,6 @@ const mongoose = require("mongoose");
 const dressSchema = new mongoose.Schema(
   {
     // Owner of the dress
-  
     owner: { 
       type: mongoose.Schema.Types.ObjectId, 
       ref: "User", 
@@ -16,11 +15,11 @@ const dressSchema = new mongoose.Schema(
       required: true 
     },
     
-    // Size options - kept simple for now
+    // Size options
     size: { 
       type: String, 
       required: true,
-      enum: ["XS", "S", "M", "L", "XL", "XXL", "Custom"] // Restrict to these options
+      enum: ["XS", "S", "M", "L", "XL", "XXL", "Custom"]
     },
     
     // Color of the dress
@@ -29,23 +28,22 @@ const dressSchema = new mongoose.Schema(
       required: true 
     },
     
-    // Category - wedding, festival, party, etc
+    // Category
     category: { 
       type: String, 
       required: true,
-      //enum: ["Wedding", "Festival", "Party", "Traditional", "Modern"] 
     },
     
-    // Price per day in rupees
+    // Price per day
     price: { 
       type: Number, 
       required: true 
     },
     
-    // Image URL - where to find the dress photo
+    // Image URL
     image: { 
       type: String,
-      default: "https://images.unsplash.com/photo-1583391733956-3750e0ff4e8b?w=600&q=80" // Default image if none provided
+      default: "https://images.unsplash.com/photo-1583391733956-3750e0ff4e8b?w=600&q=80"
     },
     
     // Dress description 
@@ -54,14 +52,26 @@ const dressSchema = new mongoose.Schema(
       default: ""
     },
     
-    // Is this dress currently available for rent?
+    // Is this dress currently available?
     available: { 
       type: Boolean, 
       default: true 
+    },
+    
+    // Rating fields (added for reviews)
+    averageRating: {
+      type: Number,
+      default: 0,
+      min: 0,
+      max: 5
+    },
+    totalReviews: {
+      type: Number,
+      default: 0
     }
   },
   { 
-    timestamps: true // Automatically adds createdAt and updatedAt
+    timestamps: true
   }
 );
 

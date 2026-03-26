@@ -5,7 +5,17 @@ const User = require("../models/user");
 // Create a new booking (pending approval)
 const createBooking = async (req, res) => {
   try {
-    const { dressId, startDate, endDate, address, city, phone, totalAmount, securityDeposit } = req.body;
+    const { 
+      dressId, 
+      startDate, 
+      endDate, 
+      address, 
+      city, 
+      phone, 
+      totalAmount, 
+      securityDeposit,
+      refundDetails 
+    } = req.body;
 
     if (!dressId || !startDate || !endDate || !address || !city || !phone) {
       return res.status(400).json({ message: "All fields are required" });
@@ -17,7 +27,7 @@ const createBooking = async (req, res) => {
       return res.status(400).json({ message: "Dress not available" });
     }
 
-    // Create booking with PENDING status
+    // Create booking with PENDING status and refund details
     const booking = await Booking.create({
       renter: req.user._id,
       dress: dressId,
@@ -30,8 +40,23 @@ const createBooking = async (req, res) => {
       },
       totalAmount: totalAmount || 0,
       securityDeposit: securityDeposit || 1000,
+      refundDetails: refundDetails || {
+        preferredMethod: "bank",
+        bankDetails: {
+          accountHolder: "",
+          bankName: "",
+          accountNumber: "",
+          ifscCode: ""
+        },
+        digitalWallet: {
+          provider: "",
+          phoneNumber: "",
+          qrCode: ""
+        }
+      },
       status: "pending",
-      paymentStatus: "pending"
+      paymentStatus: "pending",
+      refundStatus: "pending"
     });
 
     res.status(201).json({
@@ -39,6 +64,7 @@ const createBooking = async (req, res) => {
       booking
     });
   } catch (error) {
+    console.error("Create booking error:", error);
     res.status(500).json({ message: error.message });
   }
 };
@@ -50,10 +76,12 @@ const getMyBookings = async (req, res) => {
       .populate("dress")
       .populate({
         path: "renter",
-        select: "name email phone address city bankDetails digitalWallet preferredRefundMethod"
-      });
+        select: "name email phone address city"
+      })
+      .sort("-createdAt");
     res.json(bookings);
   } catch (error) {
+    console.error("Get my bookings error:", error);
     res.status(500).json({ message: error.message });
   }
 };
@@ -105,6 +133,31 @@ const getOwnerPendingBookings = async (req, res) => {
   }
 };
 
+// Get completed bookings for refund processing
+const getCompletedBookingsForRefund = async (req, res) => {
+  try {
+    const dresses = await Dress.find({ owner: req.user._id });
+    const dressIds = dresses.map(d => d._id);
+
+    const bookings = await Booking.find({ 
+      dress: { $in: dressIds },
+      status: "returned",
+      refundStatus: "pending"
+    })
+      .populate("dress")
+      .populate({
+        path: "renter",
+        select: "name email phone address city bankDetails digitalWallet preferredRefundMethod"
+      })
+      .sort("-createdAt");
+    
+    res.json(bookings);
+  } catch (error) {
+    console.error("Error fetching completed bookings:", error);
+    res.status(500).json({ message: error.message });
+  }
+};
+
 // Owner confirms booking
 const confirmBooking = async (req, res) => {
   try {
@@ -132,6 +185,7 @@ const confirmBooking = async (req, res) => {
 
     res.json({ message: "Booking confirmed successfully", booking });
   } catch (error) {
+    console.error("Confirm booking error:", error);
     res.status(500).json({ message: error.message });
   }
 };
@@ -156,6 +210,7 @@ const rejectBooking = async (req, res) => {
 
     res.json({ message: "Booking rejected", booking });
   } catch (error) {
+    console.error("Reject booking error:", error);
     res.status(500).json({ message: error.message });
   }
 };
@@ -202,6 +257,93 @@ const cancelBooking = async (req, res) => {
 
     res.json({ message: "Booking cancelled successfully" });
   } catch (error) {
+    console.error("Cancel booking error:", error);
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// Process refund for returned booking (owner action)
+const processRefund = async (req, res) => {
+  try {
+    const booking = await Booking.findById(req.params.id).populate("renter");
+
+    if (!booking) {
+      return res.status(404).json({ message: "Booking not found" });
+    }
+
+    const dress = await Dress.findById(booking.dress);
+    
+    // Check if the logged-in user owns this dress
+    if (dress.owner.toString() !== req.user._id.toString()) {
+      return res.status(401).json({ message: "Not authorized" });
+    }
+
+    // Check if booking is returned and refund not processed
+    if (booking.status !== "returned") {
+      return res.status(400).json({ message: "Booking must be returned to process refund" });
+    }
+
+    if (booking.refundStatus === "completed") {
+      return res.status(400).json({ message: "Refund already processed" });
+    }
+
+    // Update refund status
+    booking.refundStatus = "processing";
+    await booking.save();
+
+    // Here you would integrate with actual payment gateway
+    // For now, we'll simulate successful refund processing
+
+    // After successful refund processing
+    booking.refundStatus = "completed";
+    booking.refundAmount = booking.securityDeposit;
+    booking.refundProcessedAt = new Date();
+    await booking.save();
+
+    res.json({ 
+      message: "Refund processed successfully", 
+      booking,
+      refundDetails: {
+        amount: booking.securityDeposit,
+        method: booking.refundDetails.preferredMethod,
+        processedAt: booking.refundProcessedAt
+      }
+    });
+  } catch (error) {
+    console.error("Process refund error:", error);
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// Get refund details for a specific booking
+const getRefundDetails = async (req, res) => {
+  try {
+    const booking = await Booking.findById(req.params.id)
+      .populate("renter", "name email phone");
+
+    if (!booking) {
+      return res.status(404).json({ message: "Booking not found" });
+    }
+
+    const dress = await Dress.findById(booking.dress);
+    
+    // Check authorization (renter or owner)
+    const isRenter = booking.renter._id.toString() === req.user._id.toString();
+    const isOwner = dress && dress.owner.toString() === req.user._id.toString();
+    
+    if (!isRenter && !isOwner) {
+      return res.status(401).json({ message: "Not authorized" });
+    }
+
+    res.json({
+      refundDetails: booking.refundDetails,
+      refundStatus: booking.refundStatus,
+      refundAmount: booking.refundAmount,
+      refundProcessedAt: booking.refundProcessedAt,
+      securityDeposit: booking.securityDeposit
+    });
+  } catch (error) {
+    console.error("Get refund details error:", error);
     res.status(500).json({ message: error.message });
   }
 };
@@ -232,6 +374,7 @@ const deleteBooking = async (req, res) => {
 
     res.json({ message: "Booking deleted successfully" });
   } catch (error) {
+    console.error("Delete booking error:", error);
     res.status(500).json({ message: error.message });
   }
 };
@@ -241,8 +384,11 @@ module.exports = {
   getMyBookings,
   getOwnerBookings,
   getOwnerPendingBookings,
+  getCompletedBookingsForRefund,
   confirmBooking,
   rejectBooking,
   cancelBooking,
-  deleteBooking
+  deleteBooking,
+  processRefund,
+  getRefundDetails
 };

@@ -8,6 +8,7 @@ exports.recommendBySkinTone = async (req, res) => {
       return res.status(400).json({ message: "Image required" });
     }
 
+    console.log("=" .repeat(50));
     console.log("Processing skin tone recommendation...");
     
     const formData = new FormData();
@@ -16,7 +17,6 @@ exports.recommendBySkinTone = async (req, res) => {
       contentType: "image/jpeg",
     });
 
-    // Call Flask API for skin tone detection
     console.log("Calling Flask API for skin tone detection...");
     const mlRes = await axios.post(
       "http://127.0.0.1:5001/predict-skin-tone",
@@ -27,7 +27,6 @@ exports.recommendBySkinTone = async (req, res) => {
     const skinTone = mlRes.data.skin_tone;
     console.log("Detected skin tone:", skinTone);
 
-    // color recommendations for traditional dresses
     const colorMap = {
       "Light": ["Red", "Maroon", "Pink", "Purple", "Blue", "Green", "Gold"],
       "Medium": ["Red", "Maroon", "Orange", "Yellow", "Green", "Blue", "Gold"],
@@ -37,12 +36,27 @@ exports.recommendBySkinTone = async (req, res) => {
     const recommendedColors = colorMap[skinTone] || ["Red", "Maroon", "Green", "Blue", "Gold"];
     console.log("Recommended colors:", recommendedColors);
 
-    // Find dresses with colors that match recommendations
-    const dresses = await Dress.find({
-      color: { $in: recommendedColors },
-      available: true
-    }).limit(12);
+    const categoryFilter = req.query.category;
+    console.log("Category filter received:", categoryFilter || "No filter");
 
+    // Build query with CASE-INSENSITIVE color matching
+    // This will match "blue", "Blue", "BLUE" all the same
+    let query = {
+      available: true,
+      $or: recommendedColors.map(color => ({
+        color: { $regex: new RegExp(`^${color}$`, 'i') }
+      }))
+    };
+
+    // Add category filter if provided (also case-insensitive)
+    if (categoryFilter && categoryFilter !== 'all' && categoryFilter !== '') {
+      query.category = { $regex: new RegExp(`^${categoryFilter}$`, 'i') };
+      console.log("Applying category filter:", categoryFilter);
+    }
+
+    console.log("Final MongoDB query:", JSON.stringify(query, null, 2));
+
+    const dresses = await Dress.find(query).limit(12);
     console.log(`Found ${dresses.length} matching dresses`);
 
     res.json({
@@ -53,6 +67,13 @@ exports.recommendBySkinTone = async (req, res) => {
 
   } catch (err) {
     console.error("Recommendation error:", err);
-    res.status(500).json({ message: "Recommendation failed" });
+    
+    if (err.code === 'ECONNREFUSED') {
+      return res.status(503).json({ 
+        message: "Flask AI server is not running. Please start it on port 5001." 
+      });
+    }
+    
+    res.status(500).json({ message: "Recommendation failed: " + err.message });
   }
 };
