@@ -13,22 +13,22 @@ const ReviewsPage = () => {
   const [error, setError] = useState(null);
   const [user, setUser] = useState(null);
   
-  // New review form
   const [showReviewForm, setShowReviewForm] = useState(false);
   const [rating, setRating] = useState(5);
   const [comment, setComment] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [hoverRating, setHoverRating] = useState(0);
 
-  // Check if user is logged in
   useEffect(() => {
     const userData = localStorage.getItem("user");
+    const token = localStorage.getItem("token");
+    console.log("User data exists:", !!userData);
+    console.log("Token exists:", !!token);
     if (userData) {
       setUser(JSON.parse(userData));
     }
   }, []);
 
-  // Fetch dress details and reviews
   useEffect(() => {
     fetchDressAndReviews();
   }, [dressId]);
@@ -52,7 +52,7 @@ const ReviewsPage = () => {
       }
 
       // Fetch reviews
-      const reviewsResponse = await fetch(`http://localhost:5000/api/review/${dressId}`);
+      const reviewsResponse = await fetch(`http://localhost:5000/api/review/dress/${dressId}`);
       if (reviewsResponse.ok) {
         const reviewsData = await reviewsResponse.json();
         setReviews(reviewsData);
@@ -68,15 +68,32 @@ const ReviewsPage = () => {
 
   const handleSubmitReview = async (e) => {
     e.preventDefault();
-    if (!user) {
+    
+    const token = localStorage.getItem("token");
+    console.log("Token exists:", !!token);
+    
+    if (!token) {
+      setError("Please login first");
       navigate("/login");
       return;
     }
 
+    if (!user) {
+      setError("Please login first");
+      navigate("/login");
+      return;
+    }
+
+    if (!comment.trim()) {
+      setError("Please write a review");
+      return;
+    }
+
     setSubmitting(true);
+    setError(null);
+
     try {
-      const token = localStorage.getItem("token");
-      const response = await fetch("http://localhost:5000/api/review/", {
+      const response = await fetch("http://localhost:5000/api/review", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -89,19 +106,21 @@ const ReviewsPage = () => {
         })
       });
 
+      const data = await response.json();
+      console.log("Response status:", response.status);
+      console.log("Response data:", data);
+
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || "Failed to add review");
+        throw new Error(data.message || "Failed to add review");
       }
 
-      const newReview = await response.json();
-      setReviews([newReview, ...reviews]);
+      setReviews([data, ...reviews]);
       setShowReviewForm(false);
       setRating(5);
       setComment("");
-      setError(null);
       
     } catch (err) {
+      console.error("Submit review error:", err);
       setError(err.message);
     } finally {
       setSubmitting(false);
@@ -137,7 +156,6 @@ const ReviewsPage = () => {
       <Navbar />
 
       <div className="reviews-container">
-        {/* Header with back button */}
         <div className="reviews-header">
           <button onClick={() => navigate(-1)} className="back-btn">
             <i className="ri-arrow-left-line"></i> Back
@@ -145,7 +163,6 @@ const ReviewsPage = () => {
           <h1>Customer Reviews</h1>
         </div>
 
-        {/* Dress Info Card */}
         {dress && (
           <div className="dress-info-card">
             <img src={dress.image} alt={dress.name} className="dress-thumb" />
@@ -157,7 +174,6 @@ const ReviewsPage = () => {
           </div>
         )}
 
-        {/* Reviews Summary */}
         <div className="reviews-summary">
           <div className="average-rating">
             <span className="big-rating">{calculateAverage()}</span>
@@ -172,17 +188,12 @@ const ReviewsPage = () => {
             <span className="total-reviews">{reviews.length} reviews</span>
           </div>
 
-          {/* Write Review Button - Shows for any logged in user */}
           {user && !showReviewForm && (
-            <button 
-              className="write-review-btn"
-              onClick={() => setShowReviewForm(true)}
-            >
+            <button className="write-review-btn" onClick={() => setShowReviewForm(true)}>
               <i className="ri-star-line"></i> Write a Review
             </button>
           )}
 
-          {/* Login prompt for non-logged in users */}
           {!user && (
             <Link to="/login" className="login-to-review-btn">
               <i className="ri-star-line"></i> Login to Write a Review
@@ -190,19 +201,16 @@ const ReviewsPage = () => {
           )}
         </div>
 
-        {/* Error Message */}
         {error && (
           <div className="error-message">
             <i className="ri-error-warning-line"></i> {error}
           </div>
         )}
 
-        {/* Review Form */}
         {showReviewForm && (
           <div className="review-form-card">
             <h3>Write Your Review</h3>
             <form onSubmit={handleSubmitReview}>
-              {/* Rating Stars */}
               <div className="rating-input">
                 <label>Your Rating *</label>
                 <div className="star-rating">
@@ -218,33 +226,23 @@ const ReviewsPage = () => {
                 </div>
               </div>
 
-              {/* Comment */}
               <div className="form-group">
-                <label htmlFor="comment">Your Review</label>
+                <label htmlFor="comment">Your Review *</label>
                 <textarea
                   id="comment"
                   rows="4"
-                  placeholder="Tell others about your experience with this dress and owner..."
+                  placeholder="Tell others about your experience with this dress..."
                   value={comment}
                   onChange={(e) => setComment(e.target.value)}
                   required
                 ></textarea>
               </div>
 
-              {/* Form Buttons */}
               <div className="form-actions">
-                <button 
-                  type="button" 
-                  className="cancel-btn"
-                  onClick={() => setShowReviewForm(false)}
-                >
+                <button type="button" className="cancel-btn" onClick={() => setShowReviewForm(false)}>
                   Cancel
                 </button>
-                <button 
-                  type="submit" 
-                  className="submit-btn"
-                  disabled={submitting}
-                >
+                <button type="submit" className="submit-btn" disabled={submitting}>
                   {submitting ? "Submitting..." : "Submit Review"}
                 </button>
               </div>
@@ -252,7 +250,6 @@ const ReviewsPage = () => {
           </div>
         )}
 
-        {/* Reviews List */}
         <div className="reviews-list">
           {reviews.length === 0 ? (
             <div className="no-reviews">

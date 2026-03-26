@@ -697,3 +697,30 @@ h1, h2, h3, h4, h5 {
     justify-content: center;
   }
 }
+/* Form Row Styles (Add to your CSS) */
+.form-row {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.form-row input {
+  flex: 1;
+  min-width: 150px;
+}
+
+@media (max-width: 640px) {
+  .form-row {
+    flex-direction: column;
+  }
+  
+  .form-row input {
+    width: 100%;
+  }
+}
+
+/* View All Button in Empty State */
+.empty-state .btn-outline {
+  display: inline-block;
+  margin-top: 15px;
+}

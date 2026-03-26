@@ -18,130 +18,59 @@ const AIRecommendation = () => {
   const [videoElementCreated, setVideoElementCreated] = useState(false);
   const [flaskStatus, setFlaskStatus] = useState('checking');
   const [nodeStatus, setNodeStatus] = useState('checking');
+  const [selectedCategory, setSelectedCategory] = useState("");
+  const [allDresses, setAllDresses] = useState([]);
+  const [isFiltering, setIsFiltering] = useState(false);
   
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
   const streamRef = useRef(null);
-  const tipsIntervalRef = useRef(null);
+
+  const categories = [
+    { value: "wedding", label: "Wedding", icon: "ri-rings-line" },
+    { value: "festival", label: "Festival", icon: "ri-fire-line" },
+    { value: "party", label: "Party", icon: "ri-music-line" },
+    { value: "traditional", label: "Traditional", icon: "ri-temple-line" },
+    { value: "modern", label: "Modern", icon: "ri-flashlight-line" }
+  ];
 
   const tips = [
-    {
-      icon: "ri-sun-line",
-      title: "Natural Lighting",
-      description: "Find a spot with good natural lighting for best results",
-      color: "#fbbf24"
-    },
-    {
-      icon: "ri-focus-3-line",
-      title: "Face Forward",
-      description: "Look directly at the camera with your face centered",
-      color: "#60a5fa"
-    },
-    {
-      icon: "ri-glasses-line",
-      title: "Remove Accessories",
-      description: "Take off glasses and heavy makeup for accurate detection",
-      color: "#a78bfa"
-    },
-    {
-      icon: "ri-emotion-happy-line",
-      title: "Relax & Smile",
-      description: "Keep a neutral expression for best results",
-      color: "#f472b6"
-    }
+    { icon: "ri-sun-line", title: "Natural Lighting", description: "Find a spot with good natural lighting" },
+    { icon: "ri-focus-3-line", title: "Face Forward", description: "Look directly at the camera" },
+    { icon: "ri-glasses-line", title: "Remove Accessories", description: "Take off glasses for accurate detection" },
+    { icon: "ri-emotion-happy-line", title: "Relax", description: "Keep a neutral expression" }
   ];
 
   const howItWorks = [
-    {
-      step: 1,
-      title: "Take a Selfie",
-      description: "Use your camera to take a clear photo of your face in natural lighting",
-      icon: "ri-camera-line",
-      color: "#0284c7"
-    },
-    {
-      step: 2,
-      title: "AI Analysis",
-      description: "Our advanced AI analyzes your skin tone with 95% accuracy",
-      icon: "ri-ai-generate-line",
-      color: "#38bdf8"
-    },
-    {
-      step: 3,
-      title: "Get Recommendations",
-      description: "Receive personalized dress color recommendations instantly",
-      icon: "ri-shirt-line",
-      color: "#7dd3fc"
-    },
-    {
-      step: 4,
-      title: "Book & Wear",
-      description: "Rent your perfect dress and shine at your special occasion",
-      icon: "ri-calendar-check-line",
-      color: "#bae6fd"
-    }
+    { step: 1, title: "Choose Category", description: "Select your preferred dress category", icon: "ri-filter-line" },
+    { step: 2, title: "Take a Selfie", description: "Take a clear photo of your face", icon: "ri-camera-line" },
+    { step: 3, title: "AI Analysis", description: "Our AI analyzes your skin tone", icon: "ri-ai-generate-line" },
+    { step: 4, title: "Get Results", description: "Receive personalized recommendations", icon: "ri-shirt-line" }
   ];
 
   const faqs = [
-    {
-      question: "How accurate is the AI analysis?",
-      answer: "Our AI model is trained on thousands of images and has 95% accuracy in skin tone detection."
-    },
-    {
-      question: "What if I wear makeup?",
-      answer: "For best results, we recommend taking a photo with minimal makeup or in natural light."
-    },
-    {
-      question: "Can I use a photo from my gallery?",
-      answer: "Currently we support live camera capture for real-time analysis, but gallery upload coming soon!"
-    },
-    {
-      question: "How long does analysis take?",
-      answer: "The AI analysis typically takes 2-3 seconds to process your photo."
-    }
+    { question: "How accurate is the AI analysis?", answer: "Our AI model has 95% accuracy in skin tone detection." },
+    { question: "What if I wear makeup?", answer: "For best results, take a photo with minimal makeup." },
+    { question: "Can I filter by multiple categories?", answer: "You can select one category at a time." },
+    { question: "How long does analysis take?", answer: "Typically 2-3 seconds to process." }
   ];
 
-  // Check backend status
   useEffect(() => {
     const checkFlaskBackend = async () => {
       try {
-        const response = await fetch('http://localhost:5001/predict-skin-tone', {
-          method: 'GET',
-          headers: { 'Content-Type': 'application/json' },
-          signal: AbortSignal.timeout(2000)
-        });
+        await fetch('http://localhost:5001/predict-skin-tone', { method: 'GET', signal: AbortSignal.timeout(2000) });
         setFlaskStatus('online');
-        console.log(' Flask backend connected on port 5001');
       } catch (err) {
-        console.log('Flask connection error:', err.message);
-        try {
-          const response = await fetch('http://localhost:5001/predict-skin-tone', {
-            method: 'OPTIONS',
-            signal: AbortSignal.timeout(2000)
-          });
-          setFlaskStatus('online');
-          console.log(' Flask backend connected via OPTIONS');
-        } catch (err2) {
-          console.log(' Flask backend offline');
-          setFlaskStatus('offline');
-        }
+        setFlaskStatus('offline');
       }
     };
     
     const checkNodeBackend = async () => {
       try {
-        const response = await fetch('http://localhost:5000/api/browse', {
-          signal: AbortSignal.timeout(2000)
-        });
-        if (response.ok) {
-          setNodeStatus('online');
-          console.log(' Node.js backend connected');
-        } else {
-          setNodeStatus('offline');
-        }
+        const response = await fetch('http://localhost:5000/api/browse', { signal: AbortSignal.timeout(2000) });
+        setNodeStatus(response.ok ? 'online' : 'offline');
       } catch (err) {
         setNodeStatus('offline');
-        console.log(' Node.js backend offline');
       }
     };
     
@@ -157,74 +86,44 @@ const AIRecommendation = () => {
     };
   }, []);
 
-  // Check when video element is created
   useEffect(() => {
     if (step === 2) {
       const checkVideoInterval = setInterval(() => {
         if (videoRef.current) {
-          console.log(" Video element created and ready");
           setVideoElementCreated(true);
           clearInterval(checkVideoInterval);
         }
       }, 100);
-      
       return () => clearInterval(checkVideoInterval);
     }
   }, [step]);
 
   const startCamera = async () => {
     setCameraError(null);
-    
-    if (!videoRef.current) {
-      setCameraError("Camera not ready. Please try again.");
-      return;
-    }
-    
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ 
-        video: {
-          width: { ideal: 1280 },
-          height: { ideal: 720 },
-          facingMode: "user"
-        },
+        video: { facingMode: "user" }, 
         audio: false 
       });
-      
       videoRef.current.srcObject = stream;
       streamRef.current = stream;
-      
       videoRef.current.onloadedmetadata = () => {
-        videoRef.current.play()
-          .then(() => {
-            setCameraActive(true);
-          })
-          .catch(err => {
-            setCameraError(err.message);
-          });
+        videoRef.current.play().then(() => setCameraActive(true)).catch(err => setCameraError(err.message));
       };
-      
     } catch (err) {
-      if (err.name === "NotAllowedError") {
-        setCameraError("Camera access denied. Please allow camera access.");
-      } else if (err.name === "NotFoundError") {
-        setCameraError("No camera found on your device.");
-      } else {
-        setCameraError(err.message);
-      }
+      if (err.name === "NotAllowedError") setCameraError("Camera access denied");
+      else if (err.name === "NotFoundError") setCameraError("No camera found");
+      else setCameraError(err.message);
     }
   };
 
   const stopCamera = () => {
     if (streamRef.current) {
-      streamRef.current.getTracks().forEach(track => {
-        track.stop();
-      });
+      streamRef.current.getTracks().forEach(track => track.stop());
       streamRef.current = null;
     }
     setCameraActive(false);
-    if (videoRef.current) {
-      videoRef.current.srcObject = null;
-    }
+    if (videoRef.current) videoRef.current.srcObject = null;
   };
 
   const captureImage = () => {
@@ -235,8 +134,6 @@ const AIRecommendation = () => {
       
       canvas.width = video.videoWidth;
       canvas.height = video.videoHeight;
-      
-      // Mirror the image horizontally for selfie view
       context.translate(canvas.width, 0);
       context.scale(-1, 1);
       context.drawImage(video, 0, 0, canvas.width, canvas.height);
@@ -249,8 +146,6 @@ const AIRecommendation = () => {
       }, "image/jpeg", 0.9);
       
       stopCamera();
-    } else {
-      setCameraError("Camera not ready. Please try again.");
     }
   };
 
@@ -262,39 +157,25 @@ const AIRecommendation = () => {
     startCamera();
   };
 
-  // FIXED getSkinToneInfo function - matches controller recommendations
   const getSkinToneInfo = (tone) => {
-    // Match your controller's color recommendations
     const colorMap = {
       "light": ["Red", "Maroon", "Pink", "Purple", "Blue", "Green", "Gold"],
       "medium": ["Red", "Maroon", "Orange", "Yellow", "Green", "Blue", "Gold"],
       "dark": ["Red", "Maroon", "Purple", "Blue", "Green", "Gold", "Silver"]
     };
-
     const descriptions = {
-      "light": "Light skin tones look stunning in rich reds, maroons, pinks, and jewel tones like purple, blue, and green.",
-      "medium": "Medium skin tones glow in warm colors like red, maroon, orange, yellow, and earthy greens and blues.",
-      "dark": "Dark skin tones radiate in vibrant colors like red, maroon, purple, blue, green, and metallics like gold and silver."
+      "light": "Light skin tones look stunning in rich reds, maroons, pinks, and jewel tones.",
+      "medium": "Medium skin tones glow in warm colors like red, maroon, orange, and yellow.",
+      "dark": "Dark skin tones radiate in vibrant colors like red, maroon, purple, and blue."
     };
-
-    const gradients = {
-      "light": "linear-gradient(135deg, #f5e6d3, #e6d5b8)",
-      "medium": "linear-gradient(135deg, #d9b99b, #c4a484)",
-      "dark": "linear-gradient(135deg, #8d5524, #6b3e1a)"
-    };
-
     const toneLower = tone?.toLowerCase();
-    
     if (toneLower && colorMap[toneLower]) {
       return {
-        gradient: gradients[toneLower],
         description: descriptions[toneLower],
         recommendedColors: colorMap[toneLower]
       };
     }
-    
     return {
-      gradient: "linear-gradient(135deg, #e0e0e0, #c0c0c0)",
       description: "Every skin tone has its unique beauty.",
       recommendedColors: ["Red", "Blue", "Green", "Gold"]
     };
@@ -303,55 +184,42 @@ const AIRecommendation = () => {
   const toneInfo = getSkinToneInfo(skinTone);
 
   const handleShare = (platform) => {
-    const text = `I just discovered my perfect skin tone palette with GoTrad AI! You should try it too.`;
     const url = window.location.href;
-    
     if (platform === 'whatsapp') {
-      window.open(`https://wa.me/?text=${encodeURIComponent(text + ' ' + url)}`, '_blank');
+      window.open(`https://wa.me/?text=${encodeURIComponent('Check out GoTrad AI! ' + url)}`, '_blank');
     } else if (platform === 'facebook') {
       window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`, '_blank');
     } else if (platform === 'twitter') {
-      window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`, '_blank');
+      window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent('Check out GoTrad AI!')}&url=${encodeURIComponent(url)}`, '_blank');
     } else if (platform === 'copy') {
       navigator.clipboard.writeText(url);
-      alert('Link copied to clipboard!');
+      alert('Link copied!');
     }
   };
 
-  // UPDATED analyzeSkinTone function - now calls Node.js backend
+  const filterDressesByCategory = (dresses, category) => {
+    if (!category) return dresses;
+    return dresses.filter(dress => dress.category?.toLowerCase() === category.toLowerCase());
+  };
+
   const analyzeSkinTone = async () => {
     if (!window.capturedImageBlob) {
       setError("No image captured");
       return;
     }
-
     setLoading(true);
-    setError(null);
-    
     try {
       const formData = new FormData();
       formData.append("image", window.capturedImageBlob, "face.jpg");
-      
-      console.log("Sending to Node.js backend...");
-      
-      // Send to Node.js backend (not directly to Flask)
       const token = localStorage.getItem("token");
       const response = await fetch('http://localhost:5000/api/recommend', {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`
-          // Don't set Content-Type - browser will set it with boundary
-        },
+        headers: { 'Authorization': `Bearer ${token}` },
         body: formData,
       });
-      
       const data = await response.json();
-      console.log("Recommendation response:", data);
-      
       if (response.ok) {
         setSkinTone(data.skinTone);
-        
-        // Transform the dresses from the response
         const transformedDresses = data.dresses.map(dress => ({
           _id: dress._id,
           name: dress.name,
@@ -359,26 +227,42 @@ const AIRecommendation = () => {
           size: dress.size,
           color: dress.color,
           pricePerDay: dress.price,
-          image: dress.image || "https://images.unsplash.com/photo-1583391733956-3750e0ff4e8b?w=600&q=80",
-          available: dress.available
+          available: dress.available,
+          image: dress.image || "https://images.unsplash.com/photo-1583391733956-3750e0ff4e8b?w=600&q=80"
         }));
-        
-        setRecommendedDresses(transformedDresses);
+        setAllDresses(transformedDresses);
+        setRecommendedDresses(selectedCategory ? filterDressesByCategory(transformedDresses, selectedCategory) : transformedDresses);
         setStep(3);
       } else {
         throw new Error(data.message || "Recommendation failed");
       }
     } catch (err) {
-      console.error("Recommendation error:", err);
       setError("AI analysis failed. Please try again.");
     } finally {
       setLoading(false);
     }
   };
 
+  const applyCategoryFilter = (category) => {
+    setSelectedCategory(category);
+    const filtered = filterDressesByCategory(allDresses, category);
+    setRecommendedDresses(filtered);
+    if (filtered.length === 0) {
+      setError(`No ${category} dresses found`);
+      setTimeout(() => setError(null), 3000);
+    }
+  };
+
+  const clearCategoryFilter = () => {
+    setSelectedCategory("");
+    setRecommendedDresses(allDresses);
+  };
+
+  const selectedCategoryInfo = categories.find(c => c.value === selectedCategory) || { label: "", icon: "ri-shirt-line" };
+
   if (loading) {
     return (
-      <div className="ai-recommendation-page">
+      <div className="ai-page">
         <Navbar />
         <div className="loading-container">
           <div className="spinner"></div>
@@ -390,119 +274,105 @@ const AIRecommendation = () => {
   }
 
   return (
-    <div className="ai-recommendation-page">
+    <div className="ai-page">
       <Navbar />
-      
       <div className="ai-container">
         <div className="ai-header">
-          <h1>AI Skin Tone <span className="gradient-text">Recommendation</span></h1>
-          <p>Discover the perfect dress colors that complement your unique skin tone</p>
-          
-          {/* Server Status Indicators */}
-          <div style={{
-            display: 'flex',
-            justifyContent: 'center',
-            gap: '20px',
-            marginTop: '15px',
-            fontSize: '0.85rem'
-          }}>
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '5px',
-              padding: '5px 10px',
-              background: flaskStatus === 'online' ? '#10b98120' : '#ef444420',
-              borderRadius: '20px',
-              color: flaskStatus === 'online' ? '#10b981' : '#ef4444'
-            }}>
-              <span style={{
-                width: '8px',
-                height: '8px',
-                borderRadius: '50%',
-                background: flaskStatus === 'online' ? '#10b981' : '#ef4444',
-                display: 'inline-block'
-              }}></span>
-              AI Model: {flaskStatus === 'online' ? 'Connected' : 'Offline'}
+          <h1>AI Skin Tone <span>Recommendation</span></h1>
+          <p>Discover dress colors that complement your skin tone</p>
+          <div className="status-indicators">
+            <div className={`status ${flaskStatus}`}>
+              <span></span>AI Model: {flaskStatus === 'online' ? 'Connected' : 'Offline'}
             </div>
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '5px',
-              padding: '5px 10px',
-              background: nodeStatus === 'online' ? '#10b98120' : '#ef444420',
-              borderRadius: '20px',
-              color: nodeStatus === 'online' ? '#10b981' : '#ef4444'
-            }}>
-              <span style={{
-                width: '8px',
-                height: '8px',
-                borderRadius: '50%',
-                background: nodeStatus === 'online' ? '#10b981' : '#ef4444',
-                display: 'inline-block'
-              }}></span>
-              Database: {nodeStatus === 'online' ? 'Connected' : 'Offline'}
+            <div className={`status ${nodeStatus}`}>
+              <span></span>Database: {nodeStatus === 'online' ? 'Connected' : 'Offline'}
             </div>
           </div>
         </div>
 
-        <div className="progress-steps">
-          <div className={`step-item ${step >= 1 ? "active" : ""}`}>
-            <div className="step-number">1</div>
-            <span className="step-label">Take Photo</span>
+        <div className="steps">
+          <div className={`step ${step >= 1 ? 'active' : ''}`}>
+            <div className="step-num">1</div>
+            <span>Category</span>
           </div>
-          <div className={`step-line ${step >= 2 ? "active" : ""}`}></div>
-          <div className={`step-item ${step >= 2 ? "active" : ""}`}>
-            <div className="step-number">2</div>
-            <span className="step-label">Analysis</span>
+          <div className={`step-line ${step >= 2 ? 'active' : ''}`}></div>
+          <div className={`step ${step >= 2 ? 'active' : ''}`}>
+            <div className="step-num">2</div>
+            <span>Photo</span>
           </div>
-          <div className={`step-line ${step >= 3 ? "active" : ""}`}></div>
-          <div className={`step-item ${step >= 3 ? "active" : ""}`}>
-            <div className="step-number">3</div>
-            <span className="step-label">Results</span>
+          <div className={`step-line ${step >= 3 ? 'active' : ''}`}></div>
+          <div className={`step ${step >= 3 ? 'active' : ''}`}>
+            <div className="step-num">3</div>
+            <span>Results</span>
           </div>
         </div>
 
-        {/* STEP 1: INTRO */}
+        {/* Error Message */}
+        {error && (
+          <div className="error-message">
+            <i className="ri-error-warning-line"></i>
+            <p>{error}</p>
+          </div>
+        )}
+
+        {/* Step 1: Category Selection */}
         {step === 1 && (
-          <div className="intro-section">
-            {/* Main CTA Card */}
-            <div className="intro-main-card glass-panel">
-              <div className="intro-icons">
-                <i className="ri-camera-line"></i>
-                <i className="ri-magic-line"></i>
+          <div className="step-content">
+            <div className="card category-card-main">
+              <div className="card-icons">
+                <i className="ri-filter-line"></i>
                 <i className="ri-shirt-line"></i>
+                <i className="ri-magic-line"></i>
               </div>
-              
-              <h2>Discover Your Perfect Match</h2>
-              <p className="intro-description">
-                Our AI-powered technology analyzes your skin tone and recommends the perfect dress colors that will make you shine
-              </p>
-
-              <button 
-                className="btn-primary btn-large"
-                onClick={() => setStep(2)}
-              >
-                <i className="ri-camera-line"></i>
-                Start Camera
-              </button>
+              <h2>Select a Category</h2>
+              <p>Choose the type of outfit you're looking for</p>
+              <div className="category-grid">
+                {categories.map((cat) => (
+                  <button
+                    key={cat.value}
+                    className={`category-btn ${selectedCategory === cat.value ? 'selected' : ''}`}
+                    onClick={() => setSelectedCategory(cat.value)}
+                  >
+                    <i className={cat.icon}></i>
+                    <div>
+                      <strong>{cat.label}</strong>
+                      <span>Occasion wear</span>
+                    </div>
+                    {selectedCategory === cat.value && <i className="ri-check-line check"></i>}
+                  </button>
+                ))}
+              </div>
+              <div className="actions">
+                <button
+                  className="btn-primary"
+                  onClick={() => {
+                    if (selectedCategory) {
+                      setStep(2);
+                    } else {
+                      setError("Please select a category");
+                      setTimeout(() => setError(null), 2000);
+                    }
+                  }}
+                >
+                  Continue <i className="ri-arrow-right-line"></i>
+                </button>
+                <button className="btn-secondary" onClick={() => setSelectedCategory("")}>
+                  Clear
+                </button>
+              </div>
             </div>
 
-           
-            <div className="how-it-works">
+            <div className="info-section">
               <h3>How It Works</h3>
-              <div className="steps-timeline">
-                {howItWorks.map((item, index) => (
-                  <div key={index} className="timeline-item">
+              <div className="timeline">
+                {howItWorks.map((item, i) => (
+                  <div key={i} className="timeline-item">
                     <div className="timeline-left">
-                      <div className="step-circle" style={{ background: item.color }}>
-                        <span>{item.step}</span>
-                      </div>
-                      {index < howItWorks.length - 1 && <div className="timeline-line"></div>}
+                      <div className="timeline-num">{item.step}</div>
+                      {i < howItWorks.length - 1 && <div className="timeline-line"></div>}
                     </div>
-                    <div className="timeline-content glass-panel">
-                      <div className="step-icon-wrapper" style={{ background: `${item.color}20` }}>
-                        <i className={item.icon} style={{ color: item.color }}></i>
-                      </div>
+                    <div className="timeline-right">
+                      <i className={item.icon}></i>
                       <div>
                         <h4>{item.title}</h4>
                         <p>{item.description}</p>
@@ -513,35 +383,30 @@ const AIRecommendation = () => {
               </div>
             </div>
 
-            {/* Stats */}
-            <div className="stats-bar glass-panel">
-              <div className="stat-item">
-                <span className="stat-number">10K+</span>
-                <span className="stat-label">Happy Users</span>
+            <div className="stats">
+              <div>
+                <span>10K+</span>
+                <label>Users</label>
               </div>
-              <div className="stat-divider"></div>
-              <div className="stat-item">
-                <span className="stat-number">95%</span>
-                <span className="stat-label">Accuracy</span>
+              <div>
+                <span>95%</span>
+                <label>Accuracy</label>
               </div>
-              <div className="stat-divider"></div>
-              <div className="stat-item">
-                <span className="stat-number">50+</span>
-                <span className="stat-label">Skin Tones</span>
+              <div>
+                <span>50+</span>
+                <label>Skin Tones</label>
               </div>
-              <div className="stat-divider"></div>
-              <div className="stat-item">
-                <span className="stat-number">100+</span>
-                <span className="stat-label">Dress Styles</span>
+              <div>
+                <span>100+</span>
+                <label>Styles</label>
               </div>
             </div>
 
-            {/* FAQ Section */}
-            <div className="faq-preview">
-              <h3>Frequently Asked Questions</h3>
+            <div className="faq">
+              <h3>FAQs</h3>
               <div className="faq-grid">
-                {faqs.map((faq, index) => (
-                  <div key={index} className="faq-item glass-panel">
+                {faqs.map((faq, i) => (
+                  <div key={i} className="faq-item">
                     <h4>
                       <i className="ri-question-line"></i>
                       {faq.question}
@@ -551,247 +416,208 @@ const AIRecommendation = () => {
                 ))}
               </div>
             </div>
-
-            {/* Trust Badges */}
-            <div className="trust-badges">
-              <div className="trust-badge">
-                <i className="ri-shield-check-line"></i>
-                <span>100% Privacy Guaranteed</span>
-              </div>
-              <div className="trust-badge">
-                <i className="ri-flashlight-line"></i>
-                <span>Instant Results</span>
-              </div>
-              <div className="trust-badge">
-                <i className="ri-heart-line"></i>
-                <span>Loved by 10K+ Users</span>
-              </div>
-            </div>
           </div>
         )}
 
-        {/* STEP 2: CAMERA */}
+        {/* Step 2: Camera */}
         {step === 2 && (
-          <div className="camera-section glass-panel">
-            {/* Camera Status */}
-            <div className="camera-status">
-              <p>📹 Camera: {videoElementCreated ? 'Ready' : 'Initializing...'}</p>
-              <p>🎥 Active: {cameraActive ? 'Yes' : 'No'}</p>
-            </div>
-
-            {cameraError && (
-              <div className="camera-error">
-                <i className="ri-error-warning-line"></i>
-                <p>{cameraError}</p>
-                <button className="btn-outline" onClick={startCamera}>
-                  <i className="ri-refresh-line"></i>
-                  Try Again
-                </button>
-              </div>
-            )}
-
-            {/* Video Container */}
-            <div className="camera-frame">
-              <video
-                ref={videoRef}
-                autoPlay
-                playsInline
-                className="camera-preview mirrored"
-              />
-              <canvas ref={canvasRef} style={{ display: 'none' }} />
-              
-              {/* Face Guide Overlay */}
-              {cameraActive && (
-                <div className="face-guide">
-                  <div className="face-outline"></div>
-                  <div className="guide-text">Center your face here</div>
+          <div className="step-content">
+            <div className="card camera-card">
+              {selectedCategory && (
+                <div className="category-tag">
+                  <i className={selectedCategoryInfo.icon}></i>
+                  <span>{selectedCategoryInfo.label}</span>
+                  <button onClick={() => setSelectedCategory("")}>✕</button>
                 </div>
               )}
-            </div>
-
-            {/* Controls */}
-            <div className="camera-controls-vertical">
-              {!cameraActive ? (
-                <button 
-                  className="btn-primary btn-large"
-                  onClick={startCamera}
-                  disabled={!videoElementCreated}
-                >
-                  <i className="ri-camera-line"></i>
-                  Start Camera
-                </button>
-              ) : (
-                <button 
-                  className="btn-primary btn-large capture-btn"
-                  onClick={captureImage}
-                >
-                  <i className="ri-camera-line"></i>
-                  Capture Photo
-                </button>
+              {cameraError && (
+                <div className="error-msg">
+                  <i className="ri-error-warning-line"></i>
+                  <p>{cameraError}</p>
+                  <button onClick={startCamera}>Try Again</button>
+                </div>
               )}
-
-              <button 
-                className="btn-outline btn-large"
-                onClick={() => {
-                  stopCamera();
-                  setStep(1);
-                }}
-              >
-                <i className="ri-arrow-left-line"></i>
-                Back
-              </button>
-            </div>
-
-            {/* Tips - Static */}
-            {cameraActive && (
-              <div className="tips-static">
-                <div className="tip-static">
+              <div className="camera-frame">
+                <video ref={videoRef} autoPlay playsInline className="mirror" />
+                <canvas ref={canvasRef} style={{ display: 'none' }} />
+                {cameraActive && (
+                  <div className="face-guide">
+                    <div className="face-outline"></div>
+                    <div className="guide-text">Center your face</div>
+                  </div>
+                )}
+              </div>
+              <div className="camera-controls">
+                {!cameraActive ? (
+                  <button className="btn-primary" onClick={startCamera}>
+                    <i className="ri-camera-line"></i> Start Camera
+                  </button>
+                ) : (
+                  <button className="btn-primary" onClick={captureImage}>
+                    <i className="ri-camera-line"></i> Capture
+                  </button>
+                )}
+                <button className="btn-secondary" onClick={() => { stopCamera(); setStep(1); }}>
+                  <i className="ri-arrow-left-line"></i> Back
+                </button>
+              </div>
+              {cameraActive && (
+                <div className="tip">
                   <i className={tips[activeTip].icon}></i>
                   <div>
-                    <h4>{tips[activeTip].title}</h4>
+                    <strong>{tips[activeTip].title}</strong>
                     <p>{tips[activeTip].description}</p>
                   </div>
                 </div>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Captured Image Preview */}
-        {capturedImage && step === 2 && (
-          <div className="captured-preview">
-            <div className="preview-frame">
-              <img src={capturedImage} alt="Captured" className="preview-image" />
-              <div className="preview-overlay">
-                <i className="ri-check-line"></i>
-                <span>Photo Captured!</span>
-              </div>
+              )}
             </div>
-            
-            {loading ? (
-              <div className="analyzing-state">
-                <div className="spinner-large"></div>
-                <p>Analyzing your skin tone...</p>
-                <div className="analysis-progress">
-                  <div className="progress-bar">
-                    <div className="progress-fill"></div>
+
+            {capturedImage && (
+              <div className="captured">
+                <div className="preview">
+                  <img src={capturedImage} alt="Preview" />
+                  <div className="overlay">
+                    <i className="ri-check-line"></i>
+                    <span>Captured!</span>
                   </div>
-                  <span>AI is working its magic</span>
+                </div>
+                <div className="capture-actions">
+                  <button className="btn-primary" onClick={analyzeSkinTone}>
+                    <i className="ri-analyze-line"></i> Analyze
+                  </button>
+                  <button className="btn-secondary" onClick={retakePhoto}>
+                    <i className="ri-refresh-line"></i> Retake
+                  </button>
                 </div>
               </div>
-            ) : (
-              <div className="capture-controls">
-                <button 
-                  className="btn-primary btn-large"
-                  onClick={analyzeSkinTone}
-                >
-                  <i className="ri-analyze-line"></i>
-                  Analyze Photo
-                </button>
-                <button 
-                  className="btn-outline"
-                  onClick={retakePhoto}
-                >
-                  <i className="ri-refresh-line"></i>
-                  Retake
-                </button>
-              </div>
             )}
           </div>
         )}
 
-        {/* STEP 3: RESULTS */}
+        {/* Step 3: Results */}
         {step === 3 && (
-          <div className="results-section">
-            {/* Skin Tone Result Card */}
-            <div className="skin-tone-card glass-panel">
-              <div className="result-header">
-                <span className="result-badge">
-                  <i className="ri-magic-line"></i>
-                  AI Analysis Complete
-                </span>
+          <div className="step-content">
+            <div className="card result-card">
+              <div className="result-badge">
+                <i className="ri-magic-line"></i> Analysis Complete
               </div>
-              
-              <div className="skin-tone-display">
-                <div 
-                  className="skin-tone-circle"
-                  style={{ background: toneInfo.gradient }}
-                >
+              <div className="skin-tone">
+                <div className="tone-circle">
                   <i className="ri-user-smile-line"></i>
                 </div>
-                <div className="skin-tone-details">
-                  <h2>Your Skin Tone: <span className="gradient-text">{skinTone}</span></h2>
-                  <p className="skin-tone-description">{toneInfo.description}</p>
+                <div>
+                  <h2>Your Skin Tone: <span>{skinTone}</span></h2>
+                  <p>{toneInfo.description}</p>
+                  {selectedCategory && (
+                    <div className="filter-tag">
+                      <i className={selectedCategoryInfo.icon}></i>
+                      <span>{selectedCategoryInfo.label}</span>
+                      <button onClick={clearCategoryFilter}>✕</button>
+                    </div>
+                  )}
                 </div>
               </div>
-
-              {/* Color Palette - Now matches controller */}
-              <div className="color-palette-section">
+              <div className="colors">
                 <h3>Colors that suit you</h3>
-                <div className="color-palette">
-                  {toneInfo.recommendedColors.map((color, index) => (
-                    <div key={index} className="palette-item">
-                      <div 
-                        className="palette-color" 
-                        style={{ 
-                          background: color.includes("Red") ? "#ef4444" :
-                                     color.includes("Maroon") ? "#991b1b" :
-                                     color.includes("Pink") ? "#ec4899" :
-                                     color.includes("Purple") ? "#8b5cf6" :
-                                     color.includes("Blue") ? "#3b82f6" :
-                                     color.includes("Green") ? "#10b981" :
-                                     color.includes("Orange") ? "#f97316" :
-                                     color.includes("Yellow") ? "#eab308" :
-                                     color.includes("Gold") ? "#f59e0b" :
-                                     color.includes("Silver") ? "#94a3b8" :
-                                     "#0284c7"
-                        }}
-                      ></div>
-                      <span className="palette-label">{color}</span>
-                    </div>
-                  ))}
+                <div className="color-list">
+                  {toneInfo.recommendedColors.map((c, i) => {
+                    let bgColor = "#0284c7";
+                    if (c === "Red") bgColor = "#ef4444";
+                    else if (c === "Maroon") bgColor = "#991b1b";
+                    else if (c === "Pink") bgColor = "#ec4899";
+                    else if (c === "Purple") bgColor = "#8b5cf6";
+                    else if (c === "Blue") bgColor = "#3b82f6";
+                    else if (c === "Green") bgColor = "#10b981";
+                    else if (c === "Orange") bgColor = "#f97316";
+                    else if (c === "Yellow") bgColor = "#eab308";
+                    else if (c === "Gold") bgColor = "#f59e0b";
+                    else if (c === "Silver") bgColor = "#94a3b8";
+                    return (
+                      <div key={i}>
+                        <div className="color-dot" style={{ background: bgColor }}></div>
+                        <span>{c}</span>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             </div>
 
-            {/* Recommended Dresses - FILTERED by skin tone */}
-            <div className="recommended-dresses">
-              <div className="section-header-with-action">
-                <h2>Recommended for You</h2>
-                <Link to="/dresses" className="view-all-link">
+            <div className="card filter-card">
+              <h3>Filter by Category</h3>
+              <div className="filter-buttons">
+                {categories.map(cat => (
+                  <button
+                    key={cat.value}
+                    className={`filter-btn ${selectedCategory === cat.value ? 'active' : ''}`}
+                    onClick={() => applyCategoryFilter(cat.value)}
+                  >
+                    <i className={cat.icon}></i>
+                    {cat.label}
+                  </button>
+                ))}
+                {selectedCategory && (
+                  <button className="filter-btn clear" onClick={clearCategoryFilter}>
+                    <i className="ri-close-line"></i> Clear
+                  </button>
+                )}
+              </div>
+              {recommendedDresses.length > 0 && (
+                <p className="count">
+                  Found {recommendedDresses.length} {selectedCategory} dress{recommendedDresses.length !== 1 ? 'es' : ''}
+                </p>
+              )}
+            </div>
+
+            <div className="dresses">
+              <div className="dresses-header">
+                <h2>
+                  {selectedCategory ? `${selectedCategoryInfo.label} Recommendations` : "Recommended for You"}
+                </h2>
+                <Link to="/dresses" className="view-all">
                   View All <i className="ri-arrow-right-line"></i>
                 </Link>
               </div>
-              
               {recommendedDresses.length === 0 ? (
-                <div className="empty-state">
+                <div className="empty">
                   <i className="ri-inbox-line"></i>
-                  <h3>No dresses available</h3>
-                  <p>Check back later for new additions</p>
-                  <Link to="/dresses" className="btn-primary">
-                    Browse All Dresses
-                  </Link>
+                  <h3>No dresses found</h3>
+                  <p>
+                    {selectedCategory 
+                      ? `No ${selectedCategoryInfo.label} dresses available` 
+                      : "No dresses available"}
+                  </p>
+                  <div className="empty-actions">
+                    {selectedCategory && (
+                      <button className="btn-secondary" onClick={clearCategoryFilter}>
+                        Clear Filter
+                      </button>
+                    )}
+                    <Link to="/dresses" className="btn-primary">
+                      Browse All
+                    </Link>
+                  </div>
                 </div>
               ) : (
-                <div className="dress-results grid">
+                <div className="dress-grid">
                   {recommendedDresses.map((dress) => (
-                    <Link to={`/booking/${dress._id}`} key={dress._id} className="dress-item-link">
+                    <Link to={`/booking/${dress._id}`} key={dress._id} className="dress-link">
                       <div className="dress-card">
-                        <div className="dress-image-wrapper">
-                          <img 
-                            src={dress.image} 
-                            alt={dress.name}
-                            className="dress-image"
-                          />
-                          {!dress.available && (
-                            <div className="dress-badge unavailable">Rented</div>
+                        <div className="dress-image">
+                          <img src={dress.image} alt={dress.name} />
+                          {dress.category && (
+                            <div className="dress-cat-badge">
+                              <i className={categories.find(c => c.value === dress.category?.toLowerCase())?.icon || "ri-shirt-line"}></i>
+                              <span>{dress.category}</span>
+                            </div>
                           )}
+                          {!dress.available && <div className="dress-unavailable">Rented</div>}
                         </div>
                         <div className="dress-info">
-                          <h3 className="dress-name">{dress.name}</h3>
-                          <p className="dress-category">{dress.category}</p>
-                          <div className="dress-details">
-                            <span className="dress-price">₹{dress.pricePerDay}<span>/day</span></span>
+                          <h3>{dress.name}</h3>
+                          <p>{dress.category}</p>
+                          <div className="dress-price">
+                            ₹{dress.pricePerDay}<span>/day</span>
                             <div className="dress-meta">
                               <span className="dress-size">{dress.size}</span>
                               <span className="dress-color" style={{ backgroundColor: dress.color?.toLowerCase() }}></span>
@@ -805,53 +631,49 @@ const AIRecommendation = () => {
               )}
             </div>
 
-            {/* Share Results */}
-            <div className="share-results glass-panel">
+            <div className="card share-card">
               <h3>Love your results? Share with friends!</h3>
               <div className="share-buttons">
                 <button className="share-btn whatsapp" onClick={() => handleShare('whatsapp')}>
-                  <i className="ri-whatsapp-line"></i>
-                  WhatsApp
+                  <i className="ri-whatsapp-line"></i> WhatsApp
                 </button>
                 <button className="share-btn facebook" onClick={() => handleShare('facebook')}>
-                  <i className="ri-facebook-line"></i>
-                  Facebook
+                  <i className="ri-facebook-line"></i> Facebook
                 </button>
                 <button className="share-btn twitter" onClick={() => handleShare('twitter')}>
-                  <i className="ri-twitter-line"></i>
-                  Twitter
+                  <i className="ri-twitter-line"></i> Twitter
                 </button>
                 <button className="share-btn copy" onClick={() => handleShare('copy')}>
-                  <i className="ri-link"></i>
-                  Copy Link
+                  <i className="ri-link"></i> Copy Link
                 </button>
               </div>
             </div>
 
-            {/* Action Buttons */}
             <div className="results-actions">
-              <button 
-                className="btn-outline btn-large"
+              <button
+                className="btn-secondary"
                 onClick={() => {
                   stopCamera();
                   setStep(1);
                   setCapturedImage(null);
                   setSkinTone(null);
                   setRecommendedDresses([]);
+                  setAllDresses([]);
+                  setSelectedCategory("");
                 }}
               >
-                <i className="ri-refresh-line"></i>
-                Try Again
+                <i className="ri-refresh-line"></i> Start Over
               </button>
-              <Link to="/dresses" className="btn-primary btn-large">
-                <i className="ri-grid-line"></i>
-                Browse All
+              <button className="btn-secondary" onClick={() => setStep(2)}>
+                <i className="ri-camera-line"></i> Take Another Photo
+              </button>
+              <Link to="/dresses" className="btn-primary">
+                <i className="ri-grid-line"></i> Browse All
               </Link>
             </div>
           </div>
         )}
       </div>
-
       <Footer />
     </div>
   );

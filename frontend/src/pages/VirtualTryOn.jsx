@@ -6,135 +6,92 @@ import "./VirtualTryOn.css";
 
 const VirtualTryOn = () => {
   const navigate = useNavigate();
-  const [step, setStep] = useState(1); // 1: select dress, 2: camera, 3: result
+  const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [dresses, setDresses] = useState([]);
+  const [filteredDresses, setFilteredDresses] = useState([]);
   const [selectedDress, setSelectedDress] = useState(null);
-  const [uploadedDressImage, setUploadedDressImage] = useState(null);
   const [uploadedDressPreview, setUploadedDressPreview] = useState(null);
+  const [uploadedDressImage, setUploadedDressImage] = useState(null);
   const [dressSource, setDressSource] = useState('select');
+  const [selectedCategory, setSelectedCategory] = useState('all');
   const [capturedImage, setCapturedImage] = useState(null);
-  const [cameraError, setCameraError] = useState(null);
   const [cameraActive, setCameraActive] = useState(false);
-  const [videoElementCreated, setVideoElementCreated] = useState(false);
+  const [cameraError, setCameraError] = useState(null);
   const [flaskStatus, setFlaskStatus] = useState('checking');
   const [nodeStatus, setNodeStatus] = useState('checking');
-  const [activeTip, setActiveTip] = useState(0);
-  const [dressScale, setDressScale] = useState(1); // For resizing dress if needed
+  
+  const [offsetY, setOffsetY] = useState(30);
+  const [offsetX, setOffsetX] = useState(50);
+  const [dressWidth, setDressWidth] = useState(100);
+  const [showPreview, setShowPreview] = useState(false);
   
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
   const streamRef = useRef(null);
-  const fileInputRef = useRef(null);
   const dressFileInputRef = useRef(null);
-  const tipsIntervalRef = useRef(null);
+  const personImgRef = useRef(null);
+  const dressImgRef = useRef(null);
+  const resultCanvasRef = useRef(null);
 
-  const tips = [
-    {
-      icon: "ri-sun-line",
-      title: "Natural Lighting",
-      description: "Find a spot with good natural lighting for best results",
-      color: "#fbbf24"
-    },
-    {
-      icon: "ri-focus-3-line",
-      title: "Face Forward",
-      description: "Look directly at the camera with your face centered",
-      color: "#60a5fa"
-    },
-    {
-      icon: "ri-glasses-line",
-      title: "Remove Accessories",
-      description: "Take off glasses for clearer face detection",
-      color: "#a78bfa"
-    },
-    {
-      icon: "ri-emotion-happy-line",
-      title: "Relax & Smile",
-      description: "Keep a neutral expression for best results",
-      color: "#f472b6"
-    }
+  // Category options
+  const categories = [
+    { value: "all", label: "All", icon: "ri-apps-line" },
+    { value: "wedding", label: "Wedding", icon: "ri-rings-line" },
+    { value: "festival", label: "Festival", icon: "ri-fire-line" },
+    { value: "party", label: "Party", icon: "ri-music-line" },
+    { value: "traditional", label: "Traditional", icon: "ri-temple-line" },
+    { value: "modern", label: "Modern", icon: "ri-flashlight-line" }
   ];
 
-  // Check backend status
   useEffect(() => {
-    const checkFlaskBackend = async () => {
+    const checkBackends = async () => {
       try {
-        const response = await fetch('http://localhost:5001/health', {
-          method: 'GET',
-          signal: AbortSignal.timeout(2000)
-        });
-        if (response.ok) {
-          const data = await response.json();
-          setFlaskStatus(data.models?.virtual_tryon === 'loaded' ? 'online' : 'model_missing');
-        } else {
-          setFlaskStatus('offline');
-        }
-      } catch (err) {
+        const flaskRes = await fetch('http://localhost:5001/health', { signal: AbortSignal.timeout(2000) });
+        setFlaskStatus(flaskRes.ok ? 'online' : 'offline');
+      } catch {
         setFlaskStatus('offline');
       }
-    };
-    
-    const checkNodeBackend = async () => {
       try {
-        const response = await fetch('http://localhost:5000/api/browse', {
-          signal: AbortSignal.timeout(2000)
-        });
-        if (response.ok) {
+        const nodeRes = await fetch('http://localhost:5000/api/browse', { signal: AbortSignal.timeout(2000) });
+        if (nodeRes.ok) {
           setNodeStatus('online');
           fetchDresses();
         } else {
           setNodeStatus('offline');
         }
-      } catch (err) {
+      } catch {
         setNodeStatus('offline');
       }
     };
-    
-    checkFlaskBackend();
-    checkNodeBackend();
+    checkBackends();
   }, []);
 
-  // Auto-rotate tips
-  useEffect(() => {
-    if (step === 2 && cameraActive) {
-      tipsIntervalRef.current = setInterval(() => {
-        setActiveTip((prev) => (prev + 1) % tips.length);
-      }, 4000);
-    }
-    return () => {
-      if (tipsIntervalRef.current) {
-        clearInterval(tipsIntervalRef.current);
-      }
-    };
-  }, [step, cameraActive, tips.length]);
-
-  // Fetch dresses from backend
   const fetchDresses = async () => {
     try {
-      const response = await fetch('http://localhost:5000/api/browse');
-      if (!response.ok) throw new Error('Failed to fetch dresses');
-      const data = await response.json();
-      
-      const transformedDresses = data.map(dress => ({
-        _id: dress._id,
-        name: dress.name,
-        category: dress.category,
-        size: dress.size,
-        color: dress.color,
-        pricePerDay: dress.price,
-        image: dress.image || "https://images.unsplash.com/photo-1583391733956-3750e0ff4e8b?w=600&q=80",
-        available: dress.available
-      }));
-      
-      setDresses(transformedDresses);
+      const res = await fetch('http://localhost:5000/api/browse');
+      const data = await res.json();
+      setDresses(data);
+      setFilteredDresses(data);
     } catch (err) {
-      console.error('Error fetching dresses:', err);
+      console.error(err);
     }
   };
 
-  // Cleanup camera on unmount
+  // Filter dresses by category
+  const filterByCategory = (category) => {
+    setSelectedCategory(category);
+    if (category === 'all') {
+      setFilteredDresses(dresses);
+    } else {
+      const filtered = dresses.filter(dress => 
+        dress.category?.toLowerCase() === category.toLowerCase()
+      );
+      setFilteredDresses(filtered);
+    }
+  };
+
   useEffect(() => {
     return () => {
       if (streamRef.current) {
@@ -143,584 +100,399 @@ const VirtualTryOn = () => {
     };
   }, []);
 
-  // Check when video element is created
-  useEffect(() => {
-    if (step === 2) {
-      const checkVideoInterval = setInterval(() => {
-        if (videoRef.current) {
-          console.log(" Video element created and ready");
-          setVideoElementCreated(true);
-          clearInterval(checkVideoInterval);
-        }
-      }, 100);
-      return () => clearInterval(checkVideoInterval);
-    }
-  }, [step]);
-
   const startCamera = async () => {
-    setCameraError(null);
-    
-    if (!videoRef.current) {
-      setCameraError("Camera not ready. Please try again.");
-      return;
-    }
-    
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ 
-        video: {
-          width: { ideal: 1280 },
-          height: { ideal: 720 },
-          facingMode: "user"
-        },
-        audio: false 
-      });
-      
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
       videoRef.current.srcObject = stream;
       streamRef.current = stream;
-      
-      videoRef.current.onloadedmetadata = () => {
-        videoRef.current.play()
-          .then(() => {
-            setCameraActive(true);
-          })
-          .catch(err => {
-            setCameraError(err.message);
-          });
-      };
-      
+      setCameraActive(true);
+      setCameraError(null);
     } catch (err) {
-      if (err.name === "NotAllowedError") {
-        setCameraError("Camera access denied. Please allow camera access.");
-      } else if (err.name === "NotFoundError") {
-        setCameraError("No camera found on your device.");
-      } else {
-        setCameraError(err.message);
-      }
+      setCameraError("Camera access denied. Please allow camera access.");
     }
   };
 
   const stopCamera = () => {
     if (streamRef.current) {
-      streamRef.current.getTracks().forEach(track => {
-        track.stop();
-      });
+      streamRef.current.getTracks().forEach(track => track.stop());
       streamRef.current = null;
     }
     setCameraActive(false);
-    if (videoRef.current) {
-      videoRef.current.srcObject = null;
-    }
   };
 
-  const captureImage = () => {
-    if (videoRef.current && canvasRef.current && cameraActive) {
-      const video = videoRef.current;
-      const canvas = canvasRef.current;
-      const context = canvas.getContext("2d");
-      
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
-      
-      // Mirror the image horizontally for selfie view
-      context.translate(canvas.width, 0);
-      context.scale(-1, 1);
-      context.drawImage(video, 0, 0, canvas.width, canvas.height);
-      
-      // Reset transform for dress overlay
-      context.setTransform(1, 0, 0, 1, 0, 0);
-      
-      // Draw dress overlay FULL SCREEN (from neck down)
-      const dressImg = new Image();
-      dressImg.src = dressSource === 'select' ? selectedDress?.image : uploadedDressPreview;
-      dressImg.onload = () => {
-        // Make dress FULL SCREEN width
-     const overlayWidth = canvas.width * 0.65;
-     const overlayHeight = canvas.height * 0.75;
-     const overlayX = (canvas.width - overlayWidth) / 2;
-     const overlayY = canvas.height * 0.36;
-        
-        // Draw with some transparency to blend
-        context.globalAlpha = 0.9;
-        context.drawImage(dressImg, overlayX, overlayY, overlayWidth, overlayHeight);
-        context.globalAlpha = 1.0;
-        
-        // Convert to blob
-        canvas.toBlob((blob) => {
-          const imageUrl = URL.createObjectURL(blob);
-          setCapturedImage(imageUrl);
-          window.capturedImageBlob = blob;
-          setStep(3);
-        }, "image/jpeg", 0.9);
-      };
-      
-      stopCamera();
-    } else {
-      setCameraError("Camera not ready. Please try again.");
+  const capturePhoto = () => {
+    const video = videoRef.current;
+    if (!video.videoWidth || !video.videoHeight) {
+      setError("Camera not ready");
+      return;
     }
+    
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext('2d');
+    
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    
+    const size = Math.min(canvas.width, canvas.height);
+    const sx = (canvas.width - size) / 2;
+    const sy = (canvas.height - size) / 2;
+    const squareCanvas = document.createElement('canvas');
+    squareCanvas.width = size;
+    squareCanvas.height = size;
+    const squareCtx = squareCanvas.getContext('2d');
+    squareCtx.drawImage(canvas, sx, sy, size, size, 0, 0, size, size);
+    
+    const imageUrl = squareCanvas.toDataURL('image/jpeg');
+    setCapturedImage(imageUrl);
+    
+    if (personImgRef.current) {
+      personImgRef.current.src = imageUrl;
+    }
+    
+    stopCamera();
   };
 
   const handleDressUpload = (e) => {
     const file = e.target.files[0];
     if (file) {
-      if (!file.type.startsWith('image/')) {
-        setError('Please upload an image file');
-        return;
-      }
-      if (file.size > 10 * 1024 * 1024) {
-        setError('Image size should be less than 10MB');
-        return;
-      }
-      
       const reader = new FileReader();
-      reader.onload = (event) => {
-        setUploadedDressPreview(event.target.result);
+      reader.onload = () => {
+        setUploadedDressPreview(reader.result);
         setUploadedDressImage(file);
         setDressSource('upload');
-        setSelectedDress({ 
-          _id: 'uploaded',
-          name: 'Your Dress',
-          image: event.target.result,
-          isUploaded: true
-        });
+        setSelectedDress({ _id: 'uploaded', name: 'Your Dress', image: reader.result });
+        
+        if (dressImgRef.current) {
+          dressImgRef.current.src = reader.result;
+        }
       };
       reader.readAsDataURL(file);
     }
   };
 
-  const resetTryOn = () => {
-    setStep(1);
-    setSelectedDress(null);
-    setUploadedDressImage(null);
-    setUploadedDressPreview(null);
-    setCapturedImage(null);
-    setError(null);
-    setDressSource('select');
+  const selectDress = (dress) => {
+    setSelectedDress(dress);
+    if (dressImgRef.current) {
+      dressImgRef.current.src = dress.image;
+    }
+  };
+
+  const drawPreview = () => {
+    if (!personImgRef.current || !dressImgRef.current) {
+      setError("Please take a photo and select a dress first");
+      return;
+    }
+    
+    if (!personImgRef.current.complete || !dressImgRef.current.complete) {
+      setError("Images still loading, please wait");
+      return;
+    }
+    
+    const canvas = resultCanvasRef.current;
+    const ctx = canvas.getContext('2d');
+    
+    canvas.width = personImgRef.current.width;
+    canvas.height = personImgRef.current.height;
+    
+    ctx.drawImage(personImgRef.current, 0, 0, canvas.width, canvas.height);
+    
+    const dressWidthPercent = dressWidth / 100;
+    const dressWidthPx = canvas.width * dressWidthPercent;
+    const dressHeightPx = (dressImgRef.current.height * dressWidthPx) / dressImgRef.current.width;
+    
+    const dressX = (canvas.width - dressWidthPx) * (offsetX / 100);
+    const dressY = (canvas.height * offsetY) / 100;
+    
+    ctx.drawImage(dressImgRef.current, dressX, dressY, dressWidthPx, dressHeightPx);
+    
+    setShowPreview(true);
+  };
+
+  const applyResult = () => {
+    if (resultCanvasRef.current) {
+      const resultUrl = resultCanvasRef.current.toDataURL('image/jpeg');
+      setCapturedImage(resultUrl);
+      setStep(3);
+    }
   };
 
   const retakePhoto = () => {
     setCapturedImage(null);
+    setShowPreview(false);
+    setOffsetY(30);
+    setOffsetX(50);
+    setDressWidth(100);
+    if (personImgRef.current) {
+      personImgRef.current.src = '';
+    }
     startCamera();
+  };
+
+  const resetTryOn = () => {
+    setStep(1);
+    setSelectedDress(null);
+    setUploadedDressPreview(null);
+    setUploadedDressImage(null);
+    setCapturedImage(null);
+    setShowPreview(false);
+    setDressSource('select');
+    setSelectedCategory('all');
+    setOffsetY(30);
+    setOffsetX(50);
+    setDressWidth(100);
+    if (personImgRef.current) personImgRef.current.src = '';
+    if (dressImgRef.current) dressImgRef.current.src = '';
   };
 
   const saveImage = () => {
     if (capturedImage) {
       const link = document.createElement('a');
-      link.download = `tryon-${Date.now()}.jpg`;
+      link.download = `virtual-tryon-${Date.now()}.jpg`;
       link.href = capturedImage;
       link.click();
     }
   };
 
-  const bookDress = () => {
-    if (selectedDress && !selectedDress.isUploaded) {
-      navigate(`/booking/${selectedDress._id}`);
-    }
-  };
+  const formatPrice = (price) => new Intl.NumberFormat('en-IN').format(price);
 
-  const formatPrice = (price) => {
-    return new Intl.NumberFormat('en-IN').format(price);
-  };
+  useEffect(() => {
+    if (personImgRef.current && dressImgRef.current && personImgRef.current.src && dressImgRef.current.src) {
+      drawPreview();
+    }
+  }, [offsetY, offsetX, dressWidth]);
+
+  const selectedCategoryInfo = categories.find(c => c.value === selectedCategory) || categories[0];
 
   return (
-    <div className="virtual-tryon-page">
+    <div className="vt-page">
       <Navbar />
       
+      <img ref={personImgRef} style={{ display: 'none' }} crossOrigin="anonymous" />
+      <img ref={dressImgRef} style={{ display: 'none' }} crossOrigin="anonymous" />
+      
       <div className="vt-container">
-        {/* Header */}
         <div className="vt-header">
-          <h1>Virtual <span className="gradient-text">Try-On</span></h1>
-          <p>Position your face in the oval - dress will cover from neck down</p>
-          
-          {/* Server Status Indicators - Centered like AI Recommendation */}
-          <div style={{
-            display: 'flex',
-            justifyContent: 'center',
-            gap: '20px',
-            marginTop: '15px',
-            fontSize: '0.85rem'
-          }}>
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '5px',
-              padding: '5px 10px',
-              background: flaskStatus === 'online' ? '#10b98120' : flaskStatus === 'model_missing' ? '#f59e0b20' : '#ef444420',
-              borderRadius: '20px',
-              color: flaskStatus === 'online' ? '#10b981' : flaskStatus === 'model_missing' ? '#f59e0b' : '#ef4444'
-            }}>
-              <span style={{
-                width: '8px',
-                height: '8px',
-                borderRadius: '50%',
-                background: flaskStatus === 'online' ? '#10b981' : flaskStatus === 'model_missing' ? '#f59e0b' : '#ef4444',
-                display: 'inline-block'
-              }}></span>
-              AI Model: {
-                flaskStatus === 'online' ? 'Connected' : 
-                flaskStatus === 'model_missing' ? 'Model Missing' : 
-                'Offline'
-              }
+          <h1>Virtual <span>Try-On</span></h1>
+          <p>Take a photo, select a dress, and adjust position & size</p>
+          <div className="status-indicators">
+            <div className={`status ${flaskStatus === 'online' ? 'online' : 'offline'}`}>
+              <span></span> AI Model: {flaskStatus === 'online' ? 'Connected' : 'Offline'}
             </div>
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '5px',
-              padding: '5px 10px',
-              background: nodeStatus === 'online' ? '#10b98120' : '#ef444420',
-              borderRadius: '20px',
-              color: nodeStatus === 'online' ? '#10b981' : '#ef4444'
-            }}>
-              <span style={{
-                width: '8px',
-                height: '8px',
-                borderRadius: '50%',
-                background: nodeStatus === 'online' ? '#10b981' : '#ef4444',
-                display: 'inline-block'
-              }}></span>
-              Database: {nodeStatus === 'online' ? 'Connected' : 'Offline'}
+            <div className={`status ${nodeStatus === 'online' ? 'online' : 'offline'}`}>
+              <span></span> Database: {nodeStatus === 'online' ? 'Connected' : 'Offline'}
             </div>
           </div>
         </div>
 
-        {/* Progress Steps */}
         <div className="vt-steps">
-          <div className={`step-item ${step >= 1 ? "active" : ""}`}>
-            <div className="step-number">1</div>
-            <span className="step-label">Choose Dress</span>
+          <div className={`step ${step >= 1 ? "active" : ""}`}>
+            <div className="step-num">1</div>
+            <span>Dress</span>
           </div>
           <div className={`step-line ${step >= 2 ? "active" : ""}`}></div>
-          <div className={`step-item ${step >= 2 ? "active" : ""}`}>
-            <div className="step-number">2</div>
-            <span className="step-label">Position Face</span>
+          <div className={`step ${step >= 2 ? "active" : ""}`}>
+            <div className="step-num">2</div>
+            <span>Photo & Position</span>
           </div>
           <div className={`step-line ${step >= 3 ? "active" : ""}`}></div>
-          <div className={`step-item ${step >= 3 ? "active" : ""}`}>
-            <div className="step-number">3</div>
-            <span className="step-label">Result</span>
+          <div className={`step ${step >= 3 ? "active" : ""}`}>
+            <div className="step-num">3</div>
+            <span>Result</span>
           </div>
         </div>
 
-        {/* STEP 1: Select Dress */}
+        {/* Step 1: Choose Dress */}
         {step === 1 && (
-          <div className="step-content glass-panel">
+          <div className="card step-card">
             <h2>Choose Your Dress</h2>
-            
-            <div className="source-tabs">
-              <button 
-                className={`source-tab ${dressSource === 'select' ? 'active' : ''}`}
-                onClick={() => setDressSource('select')}
-              >
-                <i className="ri-grid-line"></i>
-                From Collection
-              </button>
-              <button 
-                className={`source-tab ${dressSource === 'upload' ? 'active' : ''}`}
-                onClick={() => setDressSource('upload')}
-              >
-                <i className="ri-upload-line"></i>
-                Upload Your Own
-              </button>
+            <div className="tabs">
+              <button className={dressSource === 'select' ? 'active' : ''} onClick={() => setDressSource('select')}>From Collection</button>
+              <button className={dressSource === 'upload' ? 'active' : ''} onClick={() => setDressSource('upload')}>Upload Your Own</button>
             </div>
-
+            
             {dressSource === 'select' && (
               <>
-                {nodeStatus === 'offline' && (
-                  <div className="warning-message">
-                    <i className="ri-error-warning-line"></i>
-                    <span>Database offline. Showing sample collection.</span>
-                  </div>
-                )}
-
-                <div className="dresses-grid">
-                  {dresses.slice(0, 6).map((dress) => (
-                    <div 
-                      key={dress._id} 
-                      className={`dress-card ${selectedDress?._id === dress._id ? 'selected' : ''}`}
-                      onClick={() => setSelectedDress(dress)}
-                    >
-                      <div className="dress-image">
-                        <img src={dress.image} alt={dress.name} />
-                      </div>
-                      <div className="dress-info">
-                        <h3>{dress.name}</h3>
-                        <p className="dress-category">{dress.category}</p>
-                        <p className="dress-price">₹{formatPrice(dress.pricePerDay)}<span>/day</span></p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-                
-                {dresses.length > 6 && (
-                  <Link to="/dresses" className="view-more-link">
-                    View All Dresses →
-                  </Link>
-                )}
-              </>
-            )}
-
-            {dressSource === 'upload' && (
-              <div className="upload-section">
-                {!uploadedDressPreview ? (
-                  <div 
-                    className="upload-area"
-                    onClick={() => dressFileInputRef.current?.click()}
-                  >
-                    <i className="ri-upload-cloud-line"></i>
-                    <h3>Upload Your Dress Image</h3>
-                    <p>Click to browse or drag and drop</p>
-                    <p className="upload-hint">JPG, PNG up to 10MB</p>
-                  </div>
-                ) : (
-                  <div className="uploaded-preview">
-                    <img src={uploadedDressPreview} alt="Uploaded dress" />
-                    <button 
-                      className="change-photo-btn"
-                      onClick={() => {
-                        setUploadedDressPreview(null);
-                        setUploadedDressImage(null);
-                        setSelectedDress(null);
-                      }}
-                    >
-                      <i className="ri-refresh-line"></i>
-                      Change Dress
-                    </button>
-                  </div>
-                )}
-                <input
-                  type="file"
-                  ref={dressFileInputRef}
-                  onChange={handleDressUpload}
-                  accept="image/*"
-                  style={{ display: 'none' }}
-                />
-              </div>
-            )}
-
-            {(selectedDress || uploadedDressPreview) && (
-              <div className="selected-dress-bar">
-                <div className="selected-dress-info">
-                  {dressSource === 'select' && selectedDress && (
-                    <>
-                      <img src={selectedDress.image} alt={selectedDress.name} className="selected-thumb" />
-                      <span>{selectedDress.name}</span>
-                    </>
-                  )}
-                  {dressSource === 'upload' && uploadedDressPreview && (
-                    <>
-                      <img src={uploadedDressPreview} alt="Your dress" className="selected-thumb" />
-                      <span>Your Dress</span>
-                    </>
-                  )}
-                </div>
-                <button 
-                  className="btn-primary"
-                  onClick={() => setStep(2)}
-                >
-                  Continue to Camera
-                </button>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* STEP 2: Camera with Full Screen Dress Preview */}
-        {step === 2 && (selectedDress || uploadedDressPreview) && (
-          <div className="step-content glass-panel">
-            <h2>Position Your Face</h2>
-            <p className="instruction-text">Center your face in the oval - dress will cover from neck down</p>
-
-            {/* Dress Preview - Shows the dress that will be applied full screen */}
-            <div className="fullscreen-dress-preview">
-              <div className="preview-label">Dress to be applied:</div>
-              <div className="preview-image">
-                <img 
-                  src={dressSource === 'select' ? selectedDress?.image : uploadedDressPreview} 
-                  alt="Selected dress" 
-                />
-              </div>
-            </div>
-
-            {/* Camera Section */}
-            <div className="camera-section">
-              {/* Camera Status */}
-              <div className="camera-status">
-                <p>📹 Camera: {videoElementCreated ? 'Ready' : 'Initializing...'}</p>
-                <p>🎥 Active: {cameraActive ? 'Yes' : 'No'}</p>
-              </div>
-
-              {cameraError && (
-                <div className="camera-error">
-                  <i className="ri-error-warning-line"></i>
-                  <p>{cameraError}</p>
-                  <button className="btn-outline" onClick={startCamera}>
-                    <i className="ri-refresh-line"></i>
-                    Try Again
-                  </button>
-                </div>
-              )}
-
-              {/* Video Container with Face Guide */}
-              <div className="camera-frame">
-                <video
-                  ref={videoRef}
-                  autoPlay
-                  playsInline
-                  className="camera-preview mirrored"
-                />
-                <canvas ref={canvasRef} style={{ display: 'none' }} />
-                
-                {/* Face Guide Overlay - Only for face/neck positioning */}
-                {cameraActive && (
-                  <div className="face-guide">
-                    <div className="face-outline"></div>
-                    <div className="guide-text">Keep face inside oval (neck only)</div>
-                    
-                    {/* Visual indicator of where dress will cover */}
-                    <div className="dress-coverage-indicator">
-                      <div className="coverage-line"></div>
-                      <span className="coverage-text">Dress starts here ▼</span>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Controls */}
-              <div className="camera-controls-vertical">
-                {!cameraActive ? (
-                  <button 
-                    className="btn-primary btn-large"
-                    onClick={startCamera}
-                    disabled={!videoElementCreated}
-                  >
-                    <i className="ri-camera-line"></i>
-                    Start Camera
-                  </button>
-                ) : (
-                  <button 
-                    className="btn-primary btn-large capture-btn"
-                    onClick={captureImage}
-                  >
-                    <i className="ri-camera-line"></i>
-                    Capture Photo
-                  </button>
-                )}
-
-                <button 
-                  className="btn-outline btn-large"
-                  onClick={() => {
-                    stopCamera();
-                    setStep(1);
-                  }}
-                >
-                  <i className="ri-arrow-left-line"></i>
-                  Back
-                </button>
-              </div>
-
-              {/* Tips Carousel */}
-              {cameraActive && (
-                <div className="tips-carousel">
-                  <div 
-                    className="tip-card" 
-                    style={{ 
-                      background: `linear-gradient(135deg, ${tips[activeTip].color}20, ${tips[activeTip].color}40)`,
-                      borderColor: tips[activeTip].color
-                    }}
-                  >
-                    <i className={tips[activeTip].icon} style={{ color: tips[activeTip].color }}></i>
-                    <div className="tip-content">
-                      <h4>{tips[activeTip].title}</h4>
-                      <p>{tips[activeTip].description}</p>
-                    </div>
-                  </div>
-                  <div className="tip-dots">
-                    {tips.map((_, index) => (
+                {/* Category Filter */}
+                <div className="category-filter">
+                  <label>Filter by Category:</label>
+                  <div className="category-buttons">
+                    {categories.map(cat => (
                       <button
-                        key={index}
-                        className={`tip-dot ${activeTip === index ? "active" : ""}`}
-                        onClick={() => setActiveTip(index)}
-                        style={{ backgroundColor: tips[index].color }}
-                      />
+                        key={cat.value}
+                        className={`category-chip ${selectedCategory === cat.value ? 'active' : ''}`}
+                        onClick={() => filterByCategory(cat.value)}
+                      >
+                        <i className={cat.icon}></i>
+                        <span>{cat.label}</span>
+                      </button>
                     ))}
                   </div>
                 </div>
-              )}
-            </div>
+
+                {/* Results Count */}
+                <p className="results-count">
+                  Showing {filteredDresses.length} dress{filteredDresses.length !== 1 ? 'es' : ''}
+                  {selectedCategory !== 'all' && ` in ${selectedCategoryInfo.label}`}
+                </p>
+
+                {/* Dress Grid */}
+                {filteredDresses.length === 0 ? (
+                  <div className="empty-dresses">
+                    <i className="ri-inbox-line"></i>
+                    <p>No dresses found in {selectedCategoryInfo.label} category</p>
+                    <button className="btn-small" onClick={() => filterByCategory('all')}>View All</button>
+                  </div>
+                ) : (
+                  <div className="dresses-grid">
+                    {filteredDresses.slice(0, 6).map(dress => (
+                      <div key={dress._id} className={`dress-item ${selectedDress?._id === dress._id ? 'selected' : ''}`} onClick={() => selectDress(dress)}>
+                        <img src={dress.image} alt={dress.name} />
+                        <div>
+                          <h3>{dress.name}</h3>
+                          <p>₹{formatPrice(dress.price)}/day</p>
+                          {dress.category && (
+                            <span className="dress-category-tag">
+                              {dress.category}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
+            
+            {dressSource === 'upload' && (
+              <div className="upload-box" onClick={() => dressFileInputRef.current?.click()}>
+                {!uploadedDressPreview ? (
+                  <>
+                    <i className="ri-upload-cloud-line"></i>
+                    <p>Click to upload dress image</p>
+                    <small>JPG, PNG up to 10MB</small>
+                  </>
+                ) : (
+                  <img src={uploadedDressPreview} alt="Dress" />
+                )}
+                <input type="file" ref={dressFileInputRef} onChange={handleDressUpload} hidden accept="image/*" />
+              </div>
+            )}
+            
+            {(selectedDress || uploadedDressPreview) && (
+              <button className="btn-primary" onClick={() => setStep(2)}>Continue</button>
+            )}
           </div>
         )}
 
-        {/* STEP 3: Result - Full Screen Dress */}
-        {step === 3 && capturedImage && (
-          <div className="step-content glass-panel">
-            <h2>Your Virtual Try-On</h2>
+        {/* Step 2: Camera + Position */}
+        {step === 2 && (
+          <div className="card step-card">
+            <h2>Take Your Photo</h2>
+            <p className="instruction">Position your face near the top of the frame</p>
             
-            <div className="result-container">
-              {/* Result Image with Full Screen Dress */}
-              <div className="fullscreen-result">
-                <img src={capturedImage} alt="Your try-on" className="result-image-full" />
+            {cameraError && (
+              <div className="error-box">
+                <p>{cameraError}</p>
+                <button onClick={startCamera}>Allow Camera</button>
               </div>
-
-              {/* Dress Info */}
-              <div className="dress-info-card">
-                <div className="dress-info-content">
-                  <img 
-                    src={dressSource === 'select' ? selectedDress?.image : uploadedDressPreview} 
-                    alt="Dress" 
-                    className="result-dress-thumb" 
-                  />
-                  <div>
-                    <h4>{dressSource === 'select' ? selectedDress?.name : 'Your Dress'}</h4>
-                    {dressSource === 'select' && selectedDress && (
-                      <>
-                        <p>{selectedDress.category} • Size {selectedDress.size}</p>
-                        <p className="result-price">₹{formatPrice(selectedDress.pricePerDay)}/day</p>
-                      </>
-                    )}
+            )}
+            
+            <div className="camera-box square">
+              {!capturedImage ? (
+                <video ref={videoRef} autoPlay playsInline className="video-preview mirror" />
+              ) : (
+                <img src={capturedImage} alt="Captured" className="image-preview" />
+              )}
+              <canvas ref={canvasRef} style={{ display: 'none' }} />
+            </div>
+            
+            <canvas ref={resultCanvasRef} style={{ display: 'none' }} />
+            
+            {!cameraActive && !capturedImage && (
+              <button className="btn-primary" onClick={startCamera}>Start Camera</button>
+            )}
+            {cameraActive && !capturedImage && (
+              <button className="btn-primary" onClick={capturePhoto}>Take Photo</button>
+            )}
+            
+            {capturedImage && (
+              <>
+                <div className="controls">
+                  <div className="control">
+                    <label>Vertical Position</label>
+                    <input type="range" min="0" max="100" value={offsetY} onChange={(e) => setOffsetY(parseInt(e.target.value))} />
+                    <span className="value">{offsetY}% (0=Top, 100=Bottom)</span>
+                  </div>
+                  
+                  <div className="control">
+                    <label>Horizontal Position</label>
+                    <input type="range" min="0" max="100" value={offsetX} onChange={(e) => setOffsetX(parseInt(e.target.value))} />
+                    <span className="value">{offsetX}% (0=Left, 50=Center, 100=Right)</span>
+                  </div>
+                  
+                  <div className="control">
+                    <label>Dress Width</label>
+                    <input type="range" min="50" max="200" value={dressWidth} onChange={(e) => setDressWidth(parseInt(e.target.value))} />
+                    <span className="value">{dressWidth}% (50=Narrow, 100=Normal, 200=Wide)</span>
+                  </div>
+                  
+                  <div className="control-buttons">
+                    <button className="btn-small" onClick={drawPreview}>Preview</button>
+                    <button className="btn-small" onClick={() => { setOffsetY(30); setOffsetX(50); setDressWidth(100); }}>Reset</button>
                   </div>
                 </div>
-              </div>
-
-              {/* Action Buttons */}
-              <div className="result-actions">
-                <button 
-                  className="btn-outline btn-large"
-                  onClick={retakePhoto}
-                >
-                  <i className="ri-refresh-line"></i>
-                  Retake
-                </button>
                 
-                <button 
-                  className="btn-primary btn-large"
-                  onClick={saveImage}
-                >
-                  <i className="ri-download-line"></i>
-                  Save Photo
-                </button>
-
-                {dressSource === 'select' && selectedDress && !selectedDress.isUploaded && selectedDress.available && (
-                  <button 
-                    className="btn-primary btn-large"
-                    onClick={bookDress}
-                  >
-                    <i className="ri-calendar-line"></i>
-                    Book This Dress
-                  </button>
+                {showPreview && (
+                  <div className="preview-box">
+                    <h3>Preview</h3>
+                    <canvas 
+                      ref={(canvas) => {
+                        if (canvas && resultCanvasRef.current) {
+                          const ctx = canvas.getContext('2d');
+                          canvas.width = resultCanvasRef.current.width;
+                          canvas.height = resultCanvasRef.current.height;
+                          ctx.drawImage(resultCanvasRef.current, 0, 0);
+                        }
+                      }}
+                      className="preview-canvas"
+                    />
+                  </div>
                 )}
-              </div>
+                
+                <div className="action-buttons">
+                  <button className="btn-primary" onClick={applyResult} disabled={!showPreview}>
+                    Apply & Continue
+                  </button>
+                  <button className="btn-secondary" onClick={retakePhoto}>Retake Photo</button>
+                </div>
+              </>
+            )}
+            
+            <button className="btn-secondary" onClick={() => { stopCamera(); setStep(1); setCapturedImage(null); setShowPreview(false); }}>
+              Back
+            </button>
+          </div>
+        )}
 
-              <button 
-                className="btn-outline"
-                onClick={resetTryOn}
-                style={{ marginTop: '20px' }}
-              >
-                Try Another Dress
+        {/* Step 3: Result */}
+        {step === 3 && capturedImage && (
+          <div className="card step-card">
+            <h2>Your Virtual Try-On</h2>
+            <img src={capturedImage} alt="Result" className="result-image" />
+            <div className="result-buttons">
+              <button className="btn-secondary" onClick={() => { setCapturedImage(null); setShowPreview(false); setStep(2); startCamera(); }}>
+                Try Again
               </button>
+              <button className="btn-primary" onClick={saveImage}>Save Photo</button>
+              {selectedDress && !selectedDress.isUploaded && (
+                <button className="btn-primary" onClick={() => navigate(`/booking/${selectedDress._id}`)}>Book This Dress</button>
+              )}
+              <button className="btn-secondary" onClick={resetTryOn}>Try Another Dress</button>
             </div>
           </div>
         )}
       </div>
-
       <Footer />
     </div>
   );

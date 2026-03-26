@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
@@ -18,6 +18,23 @@ const BookingPage = () => {
     phone: "",
     deliveryMethod: "pickup"
   });
+  
+  // Refund details state
+  const [refundDetails, setRefundDetails] = useState({
+    preferredMethod: "bank",
+    bankDetails: {
+      accountHolder: "",
+      bankName: "",
+      accountNumber: "",
+      ifscCode: ""
+    },
+    digitalWallet: {
+      provider: "",
+      phoneNumber: "",
+      qrCode: ""
+    }
+  });
+  
   const [priceBreakdown, setPriceBreakdown] = useState({
     days: 0,
     subtotal: 0,
@@ -33,6 +50,10 @@ const BookingPage = () => {
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [agreedToDigitalAgreement, setAgreedToDigitalAgreement] = useState(false);
   const [backendStatus, setBackendStatus] = useState('checking');
+  const [qrUploading, setQrUploading] = useState(false);
+  const [qrPreview, setQrPreview] = useState(null);
+  
+  const qrFileInputRef = useRef(null);
 
   // Check if backend is running
   useEffect(() => {
@@ -50,7 +71,7 @@ const BookingPage = () => {
     checkBackend();
   }, []);
 
-  // Check if user is logged in
+  // Check if user is logged in and load saved refund details
   useEffect(() => {
     const token = localStorage.getItem("token");
     const userData = localStorage.getItem("user");
@@ -60,8 +81,48 @@ const BookingPage = () => {
       if (parsedUser.phone) {
         setBookingData(prev => ({ ...prev, phone: parsedUser.phone }));
       }
+      
+      // Load saved refund details from user profile
+      fetchUserRefundDetails(token);
     }
   }, []);
+
+  const fetchUserRefundDetails = async (token) => {
+    try {
+      const response = await fetch("http://localhost:5000/api/profile", {
+        headers: {
+          "Authorization": `Bearer ${token}`
+        }
+      });
+      
+      if (response.ok) {
+        const userData = await response.json();
+        
+        if (userData.preferredRefundMethod) {
+          setRefundDetails({
+            preferredMethod: userData.preferredRefundMethod || "bank",
+            bankDetails: {
+              accountHolder: userData.bankDetails?.accountHolder || "",
+              bankName: userData.bankDetails?.bankName || "",
+              accountNumber: userData.bankDetails?.accountNumber || "",
+              ifscCode: userData.bankDetails?.ifscCode || ""
+            },
+            digitalWallet: {
+              provider: userData.digitalWallet?.provider || "",
+              phoneNumber: userData.digitalWallet?.phoneNumber || "",
+              qrCode: userData.digitalWallet?.qrCode || ""
+            }
+          });
+          
+          if (userData.digitalWallet?.qrCode) {
+            setQrPreview(userData.digitalWallet.qrCode);
+          }
+        }
+      }
+    } catch (err) {
+      console.error("Error fetching refund details:", err);
+    }
+  };
 
   // Fetch dress details by ID
   useEffect(() => {
@@ -155,9 +216,125 @@ const BookingPage = () => {
     }));
   };
 
+  const handleRefundMethodChange = (method) => {
+    setRefundDetails(prev => ({
+      ...prev,
+      preferredMethod: method
+    }));
+  };
+
+  const handleBankChange = (e) => {
+    const { name, value } = e.target;
+    setRefundDetails(prev => ({
+      ...prev,
+      bankDetails: {
+        ...prev.bankDetails,
+        [name]: value
+      }
+    }));
+  };
+
+  const handleWalletChange = (e) => {
+    const { name, value } = e.target;
+    setRefundDetails(prev => ({
+      ...prev,
+      digitalWallet: {
+        ...prev.digitalWallet,
+        [name]: value
+      }
+    }));
+  };
+
+  const handleQRUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      setError("Please select an image file");
+      return;
+    }
+
+    if (file.size > 2 * 1024 * 1024) {
+      setError("QR code image should be less than 2MB");
+      return;
+    }
+
+    setQrUploading(true);
+    setError("");
+
+    // Create preview
+    const reader = new FileReader();
+    reader.onload = () => {
+      setQrPreview(reader.result);
+    };
+    reader.readAsDataURL(file);
+
+    // Convert to base64 for storage
+    const base64 = await convertToBase64(file);
+    setRefundDetails(prev => ({
+      ...prev,
+      digitalWallet: {
+        ...prev.digitalWallet,
+        qrCode: base64
+      }
+    }));
+
+    setQrUploading(false);
+  };
+
+  const convertToBase64 = (file) => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = (error) => reject(error);
+    });
+  };
+
+  const removeQRCode = () => {
+    setQrPreview(null);
+    setRefundDetails(prev => ({
+      ...prev,
+      digitalWallet: {
+        ...prev.digitalWallet,
+        qrCode: ""
+      }
+    }));
+    if (qrFileInputRef.current) {
+      qrFileInputRef.current.value = "";
+    }
+  };
+
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const minDate = today.toISOString().split('T')[0];
+
+  const validateRefundDetails = () => {
+    if (refundDetails.preferredMethod === "bank") {
+      if (!refundDetails.bankDetails.accountHolder.trim()) {
+        setError("Please enter account holder name for refund");
+        return false;
+      }
+      if (!refundDetails.bankDetails.bankName.trim()) {
+        setError("Please enter bank name for refund");
+        return false;
+      }
+      if (!refundDetails.bankDetails.accountNumber.trim()) {
+        setError("Please enter account number for refund");
+        return false;
+      }
+    } else if (refundDetails.preferredMethod === "digital_wallet") {
+      if (!refundDetails.digitalWallet.provider) {
+        setError("Please select wallet provider for refund");
+        return false;
+      }
+      if (!refundDetails.digitalWallet.phoneNumber.trim()) {
+        setError("Please enter wallet phone number for refund");
+        return false;
+      }
+    }
+    return true;
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -193,6 +370,11 @@ const BookingPage = () => {
       return;
     }
 
+    // Validate refund details
+    if (!validateRefundDetails()) {
+      return;
+    }
+
     if (!agreedToTerms) {
       setError("Please agree to the terms and conditions");
       return;
@@ -225,7 +407,12 @@ const BookingPage = () => {
           deliveryMethod: bookingData.deliveryMethod,
           securityDeposit: 1000,
           deliveryFee: priceBreakdown.deliveryFee,
-          totalAmount: priceBreakdown.total
+          totalAmount: priceBreakdown.total,
+          refundDetails: {
+            preferredMethod: refundDetails.preferredMethod,
+            bankDetails: refundDetails.bankDetails,
+            digitalWallet: refundDetails.digitalWallet
+          }
         })
       });
 
@@ -237,11 +424,11 @@ const BookingPage = () => {
 
       setBookingSuccess(true);
       setBookingData(prev => ({ 
+        ...prev,
         startDate: "", 
         endDate: "",
         address: "",
         city: "",
-        phone: prev.phone,
         deliveryMethod: "pickup"
       }));
       window.scrollTo({ top: 0, behavior: "smooth" });
@@ -340,7 +527,7 @@ const BookingPage = () => {
 
         <div className="booking-grid">
           {/* Left Column - Booking Form */}
-          <div className="booking-form-section glass-panel">
+          <div className="booking-form-section">
             <h2>Rental Details</h2>
             
             {backendStatus === 'offline' && (
@@ -468,7 +655,6 @@ const BookingPage = () => {
                       value="pickup"
                       checked={bookingData.deliveryMethod === 'pickup'}
                       onChange={handleChange}
-                      required
                       disabled={!user || !dress.available || bookingSuccess || backendStatus === 'offline'}
                     />
                     <div className="delivery-option-content">
@@ -488,7 +674,6 @@ const BookingPage = () => {
                       value="delivery"
                       checked={bookingData.deliveryMethod === 'delivery'}
                       onChange={handleChange}
-                      required
                       disabled={!user || !dress.available || bookingSuccess || backendStatus === 'offline'}
                     />
                     <div className="delivery-option-content">
@@ -500,6 +685,180 @@ const BookingPage = () => {
                       <span className="delivery-option-desc">Delivered to your address</span>
                     </div>
                   </label>
+                </div>
+              </div>
+
+              {/* Refund Details Section */}
+              <div className="refund-details-section">
+                <h3>Refund Information</h3>
+                <p className="section-note">Your security deposit (NPR 1000) will be refunded to these details after return verification.</p>
+                
+                <div className="refund-method-selector">
+                  <label className="method-label">Preferred Refund Method</label>
+                  <div className="method-options">
+                    <label className={`method-option ${refundDetails.preferredMethod === 'bank' ? 'selected' : ''}`}>
+                      <input
+                        type="radio"
+                        name="refundMethod"
+                        value="bank"
+                        checked={refundDetails.preferredMethod === 'bank'}
+                        onChange={() => handleRefundMethodChange('bank')}
+                        disabled={bookingSuccess || backendStatus === 'offline'}
+                      />
+                      <i className="ri-bank-line"></i>
+                      <span>Bank Transfer</span>
+                    </label>
+                    
+                    <label className={`method-option ${refundDetails.preferredMethod === 'digital_wallet' ? 'selected' : ''}`}>
+                      <input
+                        type="radio"
+                        name="refundMethod"
+                        value="digital_wallet"
+                        checked={refundDetails.preferredMethod === 'digital_wallet'}
+                        onChange={() => handleRefundMethodChange('digital_wallet')}
+                        disabled={bookingSuccess || backendStatus === 'offline'}
+                      />
+                      <i className="ri-wallet-line"></i>
+                      <span>Digital Wallet</span>
+                    </label>
+                  </div>
+                </div>
+
+                {refundDetails.preferredMethod === 'bank' && (
+                  <div className="bank-details-section">
+                    <div className="form-group">
+                      <label>Account Holder Name</label>
+                      <input
+                        type="text"
+                        name="accountHolder"
+                        value={refundDetails.bankDetails.accountHolder}
+                        onChange={handleBankChange}
+                        placeholder="As per bank records"
+                        disabled={bookingSuccess || backendStatus === 'offline'}
+                      />
+                    </div>
+
+                    <div className="form-row">
+                      <div className="form-group half">
+                        <label>Bank Name</label>
+                        <input
+                          type="text"
+                          name="bankName"
+                          value={refundDetails.bankDetails.bankName}
+                          onChange={handleBankChange}
+                          placeholder="e.g., Nabil Bank"
+                          disabled={bookingSuccess || backendStatus === 'offline'}
+                        />
+                      </div>
+
+                      <div className="form-group half">
+                        <label>Account Number</label>
+                        <input
+                          type="text"
+                          name="accountNumber"
+                          value={refundDetails.bankDetails.accountNumber}
+                          onChange={handleBankChange}
+                          placeholder="Your account number"
+                          disabled={bookingSuccess || backendStatus === 'offline'}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="form-group">
+                      <label>IFSC Code (Optional)</label>
+                      <input
+                        type="text"
+                        name="ifscCode"
+                        value={refundDetails.bankDetails.ifscCode}
+                        onChange={handleBankChange}
+                        placeholder="e.g., NARBNPKA"
+                        disabled={bookingSuccess || backendStatus === 'offline'}
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {refundDetails.preferredMethod === 'digital_wallet' && (
+                  <div className="wallet-details-section">
+                    <div className="form-group">
+                      <label>Provider</label>
+                      <select
+                        name="provider"
+                        value={refundDetails.digitalWallet.provider}
+                        onChange={handleWalletChange}
+                        disabled={bookingSuccess || backendStatus === 'offline'}
+                      >
+                        <option value="">Select Provider</option>
+                        <option value="esewa">eSewa</option>
+                        <option value="fonepay">Fonepay</option>
+                        <option value="khalti">Khalti</option>
+                      </select>
+                    </div>
+
+                    <div className="form-group">
+                      <label>Phone Number</label>
+                      <input
+                        type="tel"
+                        name="phoneNumber"
+                        value={refundDetails.digitalWallet.phoneNumber}
+                        onChange={handleWalletChange}
+                        placeholder="98XXXXXXXX"
+                        disabled={bookingSuccess || backendStatus === 'offline'}
+                      />
+                    </div>
+
+                    <div className="form-group">
+                      <label>QR Code (Optional)</label>
+                      <div className="qr-upload-section">
+                        <input
+                          type="file"
+                          ref={qrFileInputRef}
+                          onChange={handleQRUpload}
+                          accept="image/*"
+                          style={{ display: 'none' }}
+                          disabled={bookingSuccess || backendStatus === 'offline'}
+                        />
+                        
+                        {qrPreview || refundDetails.digitalWallet.qrCode ? (
+                          <div className="qr-preview-container">
+                            <img 
+                              src={qrPreview || refundDetails.digitalWallet.qrCode} 
+                              alt="QR Code"
+                              className="qr-preview"
+                            />
+                            <button
+                              type="button"
+                              className="qr-remove-btn"
+                              onClick={removeQRCode}
+                              disabled={bookingSuccess}
+                              title="Remove QR code"
+                            >
+                              <i className="ri-delete-bin-line"></i>
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            type="button"
+                            className="qr-upload-btn"
+                            onClick={() => qrFileInputRef.current?.click()}
+                            disabled={qrUploading || bookingSuccess || backendStatus === 'offline'}
+                          >
+                            <i className="ri-qr-code-line"></i>
+                            {qrUploading ? "Uploading..." : "Upload QR Code"}
+                          </button>
+                        )}
+                        <p className="field-note">Upload a screenshot of your eSewa/Fonepay/Khalti QR code for faster refunds</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                <div className="refund-note">
+                  <i className="ri-information-line"></i>
+                  <p>
+                    Your refund will be processed within 5-7 business days after the owner verifies your return.
+                    You'll receive a notification once the refund is initiated.
+                  </p>
                 </div>
               </div>
 
@@ -569,7 +928,7 @@ const BookingPage = () => {
 
           {/* Right Column - Dress Summary & Price Breakdown */}
           <div className="booking-summary-section">
-            <div className="dress-summary-card glass-panel">
+            <div className="dress-summary-card">
               <h2>Your Selection</h2>
               
               <div className="summary-dress">
@@ -597,7 +956,7 @@ const BookingPage = () => {
               </div>
             </div>
 
-            <div className="price-breakdown-card glass-panel">
+            <div className="price-breakdown-card">
               <h2>Price Details</h2>
               
               {bookingData.startDate && bookingData.endDate && !dateError ? (
@@ -650,7 +1009,7 @@ const BookingPage = () => {
               )}
             </div>
 
-            <div className="policy-card glass-panel">
+            <div className="policy-card">
               <h3>Booking Policy</h3>
               <ul className="policy-list">
                 <li><i className="ri-check-line"></i> Owner confirms booking within 24 hours</li>

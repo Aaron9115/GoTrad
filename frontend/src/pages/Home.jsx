@@ -6,8 +6,10 @@ import "./Home.css";
 
 export default function Home() {
   const [dresses, setDresses] = useState([]);
+  const [filteredDresses, setFilteredDresses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [selectedCategory, setSelectedCategory] = useState("all");
 
   // Fetch real dresses from backend
   useEffect(() => {
@@ -20,10 +22,8 @@ export default function Home() {
         }
         
         const data = await response.json();
-        
-        // Take only first 6 dresses for homepage display
-        const recentDresses = data.slice(0, 6);
-        setDresses(recentDresses);
+        setDresses(data);
+        setFilteredDresses(data);
         setLoading(false);
       } catch (err) {
         console.error('Error fetching dresses:', err);
@@ -35,16 +35,36 @@ export default function Home() {
     fetchDresses();
   }, []);
 
+  // Filter dresses when category changes
+  useEffect(() => {
+    if (selectedCategory === "all") {
+      setFilteredDresses(dresses);
+    } else {
+      const filtered = dresses.filter(
+        dress => dress.category?.toLowerCase() === selectedCategory.toLowerCase()
+      );
+      setFilteredDresses(filtered);
+    }
+  }, [selectedCategory, dresses]);
+
+  // Get unique categories for filter buttons
+  const getCategories = () => {
+    const categories = dresses.map(dress => dress.category);
+    const unique = [...new Set(categories)];
+    return unique.filter(c => c);
+  };
+
+  const categories = getCategories();
+  const displayCategories = ["all", ...categories];
+
   return (
     <div className="home">
-      {/* Reusable Navbar */}
       <Navbar />
 
-      {/* HERO SECTION - New Background Image */}
+      {/* HERO SECTION */}
       <section id="hero" className="hero">
         <div className="hero-bg-overlay"></div>
         <div className="hero-content">
-          
           <h1>
             Celebrate <span className="gradient-text">Heritage</span><br />
             in Style
@@ -80,7 +100,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ABOUT SECTION - Simple Cards */}
+      {/* ABOUT SECTION */}
       <section id="about" className="section">
         <div className="container">
           <div className="section-header">
@@ -120,7 +140,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* DRESS COLLECTION - Simple Cards */}
+      {/* DRESS COLLECTION */}
       <section id="collection" className="section bg-light">
         <div className="container">
           <div className="section-header">
@@ -128,11 +148,17 @@ export default function Home() {
             <p className="section-sub">Browse our traditional dresses</p>
           </div>
           
+          {/* Category Filters */}
           <div className="filter-tabs">
-            <button className="filter-btn active">All</button>
-            <button className="filter-btn">Wedding</button>
-            <button className="filter-btn">Festival</button>
-            <button className="filter-btn">Party</button>
+            {displayCategories.map(category => (
+              <button
+                key={category}
+                className={`filter-btn ${selectedCategory === category ? "active" : ""}`}
+                onClick={() => setSelectedCategory(category)}
+              >
+                {category === "all" ? "All" : category}
+              </button>
+            ))}
           </div>
 
           {/* Loading State */}
@@ -151,11 +177,11 @@ export default function Home() {
             </div>
           )}
 
-          {/* Dress Grid - REAL DRESSES FROM BACKEND */}
+          {/* Dress Grid */}
           {!loading && !error && (
             <div className="dress-grid">
-              {dresses.length > 0 ? (
-                dresses.map((dress) => (
+              {filteredDresses.length > 0 ? (
+                filteredDresses.map((dress) => (
                   <div key={dress._id} className="dress-card">
                     <div className="card-badge">{dress.category}</div>
                     <div className="image-wrapper">
@@ -169,7 +195,7 @@ export default function Home() {
                       <span className="dress-type">{dress.category}</span>
                       <h4 className="dress-name">{dress.name}</h4>
                       <div className="price-row">
-                        <span className="dress-price">₹{dress.price}</span>
+                        <span className="dress-price">NPR {dress.price}</span>
                         <span className="per-day">/day</span>
                       </div>
                     </div>
@@ -179,8 +205,15 @@ export default function Home() {
               ) : (
                 <div className="empty-state">
                   <i className="ri-inbox-line"></i>
-                  <h3>No dresses available</h3>
-                  <p>Check back later for new additions</p>
+                  <h3>No dresses found</h3>
+                  <p>Try a different category or check back later</p>
+                  <button 
+                    className="btn-outline" 
+                    onClick={() => setSelectedCategory("all")}
+                    style={{ marginTop: "15px" }}
+                  >
+                    View All
+                  </button>
                 </div>
               )}
             </div>
@@ -188,7 +221,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* RENTAL PROCESS - Simple Cards */}
+      {/* RENTAL PROCESS */}
       <section id="process" className="section">
         <div className="container">
           <div className="section-header">
@@ -224,7 +257,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* FAQ SECTION - Simple Cards */}
+      {/* FAQ SECTION */}
       <section id="faq" className="section bg-light">
         <div className="container">
           <div className="section-header">
@@ -252,7 +285,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* CONTACT SECTION - Simple Cards */}
+      {/* CONTACT SECTION */}
       <section id="contact" className="section">
         <div className="container">
           <div className="section-header">
@@ -260,7 +293,6 @@ export default function Home() {
             <p className="section-sub">We'd love to hear from you</p>
           </div>
           <div className="contact-simple-grid">
-            {/* Left: Contact info cards */}
             <div className="contact-info-simple">
               <div className="contact-simple-card">
                 <div className="contact-simple-icon">
@@ -268,7 +300,7 @@ export default function Home() {
                 </div>
                 <div>
                   <h4>Visit Us</h4>
-                  <p>KATHMANDU</p>
+                  <p>Kathmandu, Nepal</p>
                 </div>
               </div>
               <div className="contact-simple-card">
@@ -302,7 +334,6 @@ export default function Home() {
                 </div>
               </div>
             </div>
-            {/* Right: Contact form */}
             <div className="contact-form-simple">
               <h3>Send a message</h3>
               <form>
@@ -324,7 +355,6 @@ export default function Home() {
         </div>
       </section>
 
-      {/* FOOTER */}
       <Footer />
     </div>
   );

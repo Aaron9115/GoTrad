@@ -29,11 +29,12 @@ const DressListing = () => {
           signal: AbortSignal.timeout(2000)
         });
         setBackendStatus('online');
-        console.log(' Backend is running');
+        console.log('Backend is running');
       } catch (err) {
         setBackendStatus('offline');
-        console.log(' Backend is offline');
+        console.log('Backend is offline');
         setError("Cannot connect to server. Please make sure backend is running on port 5000.");
+        setLoading(false);
       }
     };
     checkBackend();
@@ -47,53 +48,36 @@ const DressListing = () => {
     return () => clearInterval(interval);
   }, []);
 
-  // Fetch REAL dresses from backend only
+  // Fetch dresses from backend
   useEffect(() => {
     const fetchDresses = async () => {
-      setLoading(true);
-      setError(null);
-      
-      // Don't try to fetch if backend is offline
       if (backendStatus === 'offline') {
         setLoading(false);
         return;
       }
 
+      setLoading(true);
+      setError(null);
+
       try {
-        // Build query string from filters
         const queryParams = new URLSearchParams();
         if (filters.category) queryParams.append("category", filters.category);
         if (filters.size) queryParams.append("size", filters.size);
         if (filters.color) queryParams.append("color", filters.color);
 
-        // Use the browse endpoint to get all dresses
         const url = `http://localhost:5000/api/browse${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
-        
-        console.log('Fetching from:', url);
         
         const response = await fetch(url);
         
-        // Check if response is OK
         if (!response.ok) {
           throw new Error(`Server responded with status: ${response.status}`);
         }
 
-        // Check if response is JSON
-        const contentType = response.headers.get("content-type");
-        if (!contentType || !contentType.includes("application/json")) {
-          const text = await response.text();
-          console.error("Received non-JSON response:", text.substring(0, 200));
-          throw new Error("Server returned HTML instead of JSON. Backend might be misconfigured.");
-        }
-        
         const data = await response.json();
-        console.log('Received data from backend:', data);
         
-        if (data.length === 0) {
-          // No dresses found in backend - show empty state
+        if (!data || data.length === 0) {
           setDresses([]);
         } else {
-          // Transform backend data to match frontend structure
           const transformedDresses = data.map(dress => ({
             _id: dress._id,
             name: dress.name,
@@ -103,15 +87,14 @@ const DressListing = () => {
             pricePerDay: dress.price,
             description: dress.description || `${dress.category} - ${dress.color} traditional dress`,
             images: [dress.image || "https://images.unsplash.com/photo-1583391733956-3750e0ff4e8b?w=600&q=80"],
-            owner: dress.owner || { name: "Heritage Rental" },
+            owner: dress.owner,
             available: dress.available !== undefined ? dress.available : true,
-            averageRating: dress.averageRating || 4.5,
-            totalReviews: dress.totalReviews || Math.floor(Math.random() * 20) + 5
+            averageRating: dress.averageRating || 0,
+            totalReviews: dress.totalReviews || 0
           }));
           
           setDresses(transformedDresses);
         }
-        setError(null);
       } catch (err) {
         console.error('Failed to fetch dresses:', err);
         setError(err.message || "Could not load dresses. Please try again later.");
@@ -142,9 +125,8 @@ const DressListing = () => {
     navigate(`/booking/${dressId}`);
   };
 
-  const handleViewReviews = (e, dressId) => {
-    e.preventDefault();
-    navigate(`/reviews/${dressId}`);
+  const handleDressClick = (dressId) => {
+    navigate(`/booking/${dressId}`);
   };
 
   // Video banner content
@@ -170,7 +152,7 @@ const DressListing = () => {
     <div className="dress-listing">
       <Navbar />
 
-      {/* VIDEO HEADER AT TOP */}
+      {/* VIDEO HEADER */}
       <div className="video-hero-container">
         <div className="video-background">
           {videoBanners.map((banner, index) => (
@@ -214,7 +196,6 @@ const DressListing = () => {
           </div>
         </div>
 
-        {/* Floating stats cards */}
         <div className="video-stats">
           <div className="stat-card">
             <span className="stat-number">200+</span>
@@ -281,43 +262,32 @@ const DressListing = () => {
         <div className={`filter-panel ${showFilters ? "show" : ""}`}>
           <div className="filter-group">
             <label className="filter-label">Category</label>
-            <select 
-              name="category" 
-              value={filters.category} 
-              onChange={handleFilterChange}
-              className="filter-select"
-            >
+            <select name="category" value={filters.category} onChange={handleFilterChange}>
               <option value="">All Categories</option>
               <option value="Wedding">Wedding</option>
               <option value="Festival">Festival</option>
               <option value="Party">Party</option>
+              <option value="Traditional">Traditional</option>
+              <option value="Modern">Modern</option>
             </select>
           </div>
 
           <div className="filter-group">
             <label className="filter-label">Size</label>
-            <select 
-              name="size" 
-              value={filters.size} 
-              onChange={handleFilterChange}
-              className="filter-select"
-            >
+            <select name="size" value={filters.size} onChange={handleFilterChange}>
               <option value="">All Sizes</option>
+              <option value="XS">XS</option>
               <option value="S">S</option>
               <option value="M">M</option>
               <option value="L">L</option>
               <option value="XL">XL</option>
+              <option value="XXL">XXL</option>
             </select>
           </div>
 
           <div className="filter-group">
             <label className="filter-label">Color</label>
-            <select 
-              name="color" 
-              value={filters.color} 
-              onChange={handleFilterChange}
-              className="filter-select"
-            >
+            <select name="color" value={filters.color} onChange={handleFilterChange}>
               <option value="">All Colors</option>
               <option value="Red">Red</option>
               <option value="Blue">Blue</option>
@@ -333,18 +303,14 @@ const DressListing = () => {
 
           {hasActiveFilters && (
             <button className="clear-filters-btn" onClick={clearFilters}>
-              <i className="ri-close-line"></i>
-              Clear All
+              <i className="ri-close-line"></i> Clear All
             </button>
           )}
         </div>
 
         {/* Results Info */}
         <div className="results-info">
-          <p>
-            <span className="results-count">{dresses.length}</span> dresses found
-            {hasActiveFilters && " with selected filters"}
-          </p>
+          <p><span className="results-count">{dresses.length}</span> dresses found</p>
         </div>
 
         {/* Loading State */}
@@ -360,31 +326,11 @@ const DressListing = () => {
           <div className="error-state">
             <i className="ri-error-warning-line"></i>
             <p>{error}</p>
-            <button className="retry-btn" onClick={() => window.location.reload()}>
-              Try Again
-            </button>
+            <button className="retry-btn" onClick={() => window.location.reload()}>Try Again</button>
           </div>
         )}
 
-        {/* Backend Offline State */}
-        {backendStatus === 'offline' && !loading && (
-          <div className="error-state">
-            <i className="ri-server-line"></i>
-            <h3>Backend Server Not Running</h3>
-            <p>Please start the backend server on port 5000</p>
-            <ol style={{ textAlign: 'left', marginTop: '20px', marginBottom: '20px', paddingLeft: '20px' }}>
-              <li>Open terminal in backend folder</li>
-              <li>Run: <code>npm start</code></li>
-              <li>Refresh this page</li>
-            </ol>
-            <button className="retry-btn" onClick={() => window.location.reload()}>
-              <i className="ri-refresh-line"></i>
-              Refresh Page
-            </button>
-          </div>
-        )}
-
-        {/* Empty State - shown when no dresses in database */}
+        {/* Empty State */}
         {!loading && !error && backendStatus === 'online' && dresses.length === 0 && (
           <div className="empty-state">
             <i className="ri-inbox-line"></i>
@@ -393,51 +339,29 @@ const DressListing = () => {
           </div>
         )}
 
-        {/* Dress Grid/List - shows ONLY real dresses from database */}
+        {/* Dress Grid/List */}
         {!loading && dresses.length > 0 && (
           <div className={`dress-results ${viewMode}`}>
             {dresses.map((dress) => (
               <div key={dress._id} className="dress-item-wrapper">
                 {viewMode === "grid" ? (
-                  // GRID VIEW CARD
-                  <div className="dress-card">
-                    <Link to={`/dress/${dress._id}`} className="dress-image-link">
-                      <div className="dress-image-wrapper">
-                        <img 
-                          src={dress.images[0]} 
-                          alt={dress.name}
-                          className="dress-image"
-                        />
-                        {!dress.available && (
-                          <span className="dress-badge">Rented</span>
-                        )}
-                      </div>
-                    </Link>
+                  <div className="dress-card" onClick={() => handleDressClick(dress._id)} style={{ cursor: 'pointer' }}>
+                    <div className="dress-image-wrapper">
+                      <img src={dress.images[0]} alt={dress.name} className="dress-image" />
+                      {!dress.available && <span className="dress-badge">Rented</span>}
+                    </div>
                     <div className="dress-info">
-                      <Link to={`/dress/${dress._id}`} className="dress-name-link">
-                        <h3 className="dress-name">{dress.name}</h3>
-                      </Link>
+                      <h3 className="dress-name">{dress.name}</h3>
                       <p className="dress-category">{dress.category}</p>
                       <p className="dress-size">Size: {dress.size}</p>
                       
-                      {/* Rating Stars */}
                       <div className="dress-rating">
                         <div className="stars">
                           {[1, 2, 3, 4, 5].map((star) => (
-                            <i 
-                              key={star} 
-                              className={`ri-star${star <= Math.round(dress.averageRating) ? '-fill' : '-line'}`}
-                              style={{ color: '#fbbf24', fontSize: '0.9rem' }}
-                            ></i>
+                            <i key={star} className={`ri-star${star <= Math.round(dress.averageRating) ? '-fill' : '-line'}`} style={{ color: '#fbbf24', fontSize: '0.9rem' }}></i>
                           ))}
                         </div>
-                        <button 
-                          className="review-count-link"
-                          onClick={(e) => {
-                            e.preventDefault();
-                            navigate(`/reviews/${dress._id}`);
-                          }}
-                        >
+                        <button className="review-count-link" onClick={(e) => { e.stopPropagation(); navigate(`/reviews/${dress._id}`); }}>
                           ({dress.totalReviews} reviews)
                         </button>
                       </div>
@@ -448,65 +372,32 @@ const DressListing = () => {
                       </div>
                       
                       <div className="dress-card-actions">
-                        <button 
-                          className="rent-btn" 
-                          onClick={(e) => handleRentNow(e, dress._id)}
-                        >
-                          Rent Now
-                        </button>
-                        <button 
-                          className="review-btn"
-                          onClick={(e) => {
-                            e.preventDefault();
-                            navigate(`/reviews/${dress._id}`);
-                          }}
-                        >
+                        <button className="rent-btn" onClick={(e) => { e.stopPropagation(); handleRentNow(e, dress._id); }}>Rent Now</button>
+                        <button className="review-btn" onClick={(e) => { e.stopPropagation(); navigate(`/reviews/${dress._id}`); }}>
                           <i className="ri-star-line"></i> Reviews
                         </button>
                       </div>
                     </div>
                   </div>
                 ) : (
-                  // LIST VIEW CARD
-                  <div className="dress-list-card">
-                    <Link to={`/dress/${dress._id}`} className="list-image-link">
-                      <div className="list-image-wrapper">
-                        <img 
-                          src={dress.images[0]} 
-                          alt={dress.name}
-                          className="list-image"
-                        />
-                        {!dress.available && (
-                          <span className="dress-badge">Rented</span>
-                        )}
-                      </div>
-                    </Link>
+                  <div className="dress-list-card" onClick={() => handleDressClick(dress._id)} style={{ cursor: 'pointer' }}>
+                    <div className="list-image-wrapper">
+                      <img src={dress.images[0]} alt={dress.name} className="list-image" />
+                      {!dress.available && <span className="dress-badge">Rented</span>}
+                    </div>
                     <div className="list-info">
-                      <Link to={`/dress/${dress._id}`} className="dress-name-link">
-                        <h3 className="list-name">{dress.name}</h3>
-                      </Link>
+                      <h3 className="list-name">{dress.name}</h3>
                       <p className="list-category">{dress.category}</p>
                       <p className="list-description">{dress.description}</p>
                       <p className="list-size">Size: {dress.size} | Color: {dress.color}</p>
                       
-                      {/* Rating Stars for List View */}
                       <div className="list-rating">
                         <div className="stars">
                           {[1, 2, 3, 4, 5].map((star) => (
-                            <i 
-                              key={star} 
-                              className={`ri-star${star <= Math.round(dress.averageRating) ? '-fill' : '-line'}`}
-                              style={{ color: '#fbbf24' }}
-                            ></i>
+                            <i key={star} className={`ri-star${star <= Math.round(dress.averageRating) ? '-fill' : '-line'}`} style={{ color: '#fbbf24' }}></i>
                           ))}
                         </div>
-                        <button 
-                          className="review-count-link"
-                          onClick={(e) => {
-                            e.preventDefault();
-                            navigate(`/reviews/${dress._id}`);
-                          }}
-                        >
+                        <button className="review-count-link" onClick={(e) => { e.stopPropagation(); navigate(`/reviews/${dress._id}`); }}>
                           {dress.totalReviews} reviews
                         </button>
                       </div>
@@ -517,19 +408,8 @@ const DressListing = () => {
                       </div>
                       
                       <div className="list-card-actions">
-                        <button 
-                          className="list-rent-btn" 
-                          onClick={(e) => handleRentNow(e, dress._id)}
-                        >
-                          Rent Now
-                        </button>
-                        <button 
-                          className="list-review-btn"
-                          onClick={(e) => {
-                            e.preventDefault();
-                            navigate(`/reviews/${dress._id}`);
-                          }}
-                        >
+                        <button className="list-rent-btn" onClick={(e) => { e.stopPropagation(); handleRentNow(e, dress._id); }}>Rent Now</button>
+                        <button className="list-review-btn" onClick={(e) => { e.stopPropagation(); navigate(`/reviews/${dress._id}`); }}>
                           <i className="ri-star-line"></i> Read Reviews
                         </button>
                       </div>
