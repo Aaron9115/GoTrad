@@ -186,15 +186,16 @@ const Contact = () => {
             </div>
 
             {/* Map */}
+            {/* Map */}
             <div className="map-container glass-panel">
               <iframe
-                src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3769.588464315904!2d72.8882564!3d19.1137017!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3be7c97f346053b7%3A0xacf72f56793d190a!2sAndheri%20East%2C%20Mumbai%2C%20Maharashtra!5e0!3m2!1sen!2sin!4v1700000000000!5m2!1sen!2sin"
+                src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d56516.31656727078!2d85.29117231951556!3d27.70894272695359!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x39eb198a307baabf%3A0xb5137c1bf18db1ea!2sKathmandu%2044600%2C%20Nepal!5e0!3m2!1sen!2snp!4v1700000000000!5m2!1sen!2snp"
                 width="100%"
                 height="250"
                 style={{ border: 0, borderRadius: '16px' }}
                 allowFullScreen=""
                 loading="lazy"
-                title="Google Maps"
+                title="Google Maps - Kathmandu, Nepal"
               ></iframe>
             </div>
           </div>

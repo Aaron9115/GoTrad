@@ -61,11 +61,25 @@ const DressListing = () => {
 
       try {
         const queryParams = new URLSearchParams();
-        if (filters.category) queryParams.append("category", filters.category);
-        if (filters.size) queryParams.append("size", filters.size);
-        if (filters.color) queryParams.append("color", filters.color);
+        if (filters.category && filters.category !== "") {
+          queryParams.append("category", filters.category);
+        }
+        if (filters.size && filters.size !== "") {
+          queryParams.append("size", filters.size);
+        }
+        if (filters.color && filters.color !== "") {
+          queryParams.append("color", filters.color);
+        }
 
-        const url = `http://localhost:5000/api/browse${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
+        // FIXED: Use /filter endpoint for filtered results
+        let url;
+        if (queryParams.toString()) {
+          url = `http://localhost:5000/api/browse/filter?${queryParams.toString()}`;
+        } else {
+          url = `http://localhost:5000/api/browse/`;
+        }
+        
+        console.log("🔍 Fetching URL:", url);
         
         const response = await fetch(url);
         
@@ -74,6 +88,8 @@ const DressListing = () => {
         }
 
         const data = await response.json();
+        
+        console.log("📊 Received data count:", data.length);
         
         if (!data || data.length === 0) {
           setDresses([]);
@@ -122,6 +138,7 @@ const DressListing = () => {
 
   const handleRentNow = (e, dressId) => {
     e.preventDefault();
+    e.stopPropagation();
     navigate(`/booking/${dressId}`);
   };
 
@@ -129,20 +146,20 @@ const DressListing = () => {
     navigate(`/booking/${dressId}`);
   };
 
-  // Video banner content
+  // Video banner content with working URLs
   const videoBanners = [
     {
-      video: "https://player.vimeo.com/external/370331253.sd.mp4?s=90bfe3b958e4441a1146b60020ea0b0b6f6f2a4a&profile_id=139&oauth2_token_id=57447761",
+      video: "https://cdn.pixabay.com/video/2021/08/30/89177-591891745_large.mp4",
       title: "Nepali Wedding Traditions",
       description: "Experience the rich cultural heritage of Nepali weddings"
     },
     {
-      video: "https://player.vimeo.com/external/434045046.sd.mp4?s=3a5b8a7e9b8f7e5d4c3b2a1d0e9f8g7h6i5j4k3l2m1n0o9p8q7r6s5t4u3v2w1x0y9z",
+      video: "https://cdn.pixabay.com/video/2020/07/21/45231-443419881_large.mp4",
       title: "Festival Celebrations",
       description: "Traditional attire for Dashain, Tihar, and Teej"
     },
     {
-      video: "https://player.vimeo.com/external/479581467.sd.mp4?s=8a7b6c5d4e3f2g1h0i9j8k7l6m5n4o3p2q1r0s9t8u7v6w5x4y3z2a1b0c9d8e7f6",
+      video: "https://cdn.pixabay.com/video/2019/10/16/28407-368586478_large.mp4",
       title: "Modern Ethnic Fashion",
       description: "Fusion wear combining tradition with contemporary style"
     }
@@ -330,12 +347,22 @@ const DressListing = () => {
           </div>
         )}
 
-        {/* Empty State */}
+        {/* Empty State - Show different message when filters are applied */}
         {!loading && !error && backendStatus === 'online' && dresses.length === 0 && (
           <div className="empty-state">
             <i className="ri-inbox-line"></i>
-            <h3>No dresses available</h3>
-            <p>Check back later for new additions</p>
+            {hasActiveFilters ? (
+              <>
+                <h3>No dresses match your filters</h3>
+                <p>Try changing your filter criteria</p>
+                <button className="clear-filters-btn" onClick={clearFilters}>Clear Filters</button>
+              </>
+            ) : (
+              <>
+                <h3>No dresses available</h3>
+                <p>Check back later for new additions</p>
+              </>
+            )}
           </div>
         )}
 
@@ -353,7 +380,7 @@ const DressListing = () => {
                     <div className="dress-info">
                       <h3 className="dress-name">{dress.name}</h3>
                       <p className="dress-category">{dress.category}</p>
-                      <p className="dress-size">Size: {dress.size}</p>
+                      <p className="dress-size">Size: {dress.size} | Color: {dress.color}</p>
                       
                       <div className="dress-rating">
                         <div className="stars">
@@ -367,7 +394,7 @@ const DressListing = () => {
                       </div>
                       
                       <div className="dress-price-row">
-                        <span className="dress-price">NPR{dress.pricePerDay}</span>
+                        <span className="dress-price">NPR {dress.pricePerDay}</span>
                         <span className="dress-per-day">/day</span>
                       </div>
                       
@@ -403,7 +430,7 @@ const DressListing = () => {
                       </div>
                       
                       <div className="list-price-row">
-                        <span className="list-price">NPR{dress.pricePerDay}</span>
+                        <span className="list-price">NPR {dress.pricePerDay}</span>
                         <span className="list-per-day">/day</span>
                       </div>
                       

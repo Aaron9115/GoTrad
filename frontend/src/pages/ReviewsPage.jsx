@@ -69,6 +69,9 @@ const ReviewsPage = () => {
   const handleSubmitReview = async (e) => {
     e.preventDefault();
     
+    // Clear previous error
+    setError(null);
+    
     const token = localStorage.getItem("token");
     console.log("Token exists:", !!token);
     
@@ -84,13 +87,10 @@ const ReviewsPage = () => {
       return;
     }
 
-    if (!comment.trim()) {
-      setError("Please write a review");
-      return;
-    }
+    // REMOVED frontend comment validation - let backend handle it
+    // The backend will return proper error message
 
     setSubmitting(true);
-    setError(null);
 
     try {
       const response = await fetch("http://localhost:5000/api/review", {
@@ -102,7 +102,7 @@ const ReviewsPage = () => {
         body: JSON.stringify({
           dressId,
           rating,
-          comment
+          comment: comment.trim() // Send empty string if no comment
         })
       });
 
@@ -111,17 +111,20 @@ const ReviewsPage = () => {
       console.log("Response data:", data);
 
       if (!response.ok) {
+        // Display the error message from backend
         throw new Error(data.message || "Failed to add review");
       }
 
+      // Success - add review to list
       setReviews([data, ...reviews]);
       setShowReviewForm(false);
       setRating(5);
       setComment("");
+      setError(null); // Clear any existing error
       
     } catch (err) {
       console.error("Submit review error:", err);
-      setError(err.message);
+      setError(err.message); // Show backend error message
     } finally {
       setSubmitting(false);
     }
@@ -201,6 +204,7 @@ const ReviewsPage = () => {
           )}
         </div>
 
+        {/* Error message display - shows backend validation errors */}
         {error && (
           <div className="error-message">
             <i className="ri-error-warning-line"></i> {error}
@@ -221,6 +225,7 @@ const ReviewsPage = () => {
                       onMouseEnter={() => setHoverRating(star)}
                       onMouseLeave={() => setHoverRating(0)}
                       onClick={() => setRating(star)}
+                      style={{ cursor: 'pointer', fontSize: '1.5rem' }}
                     ></i>
                   ))}
                 </div>
@@ -234,8 +239,8 @@ const ReviewsPage = () => {
                   placeholder="Tell others about your experience with this dress..."
                   value={comment}
                   onChange={(e) => setComment(e.target.value)}
-                  required
                 ></textarea>
+                <small className="field-note">Please share your experience</small>
               </div>
 
               <div className="form-actions">

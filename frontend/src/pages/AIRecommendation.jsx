@@ -20,7 +20,6 @@ const AIRecommendation = () => {
   const [nodeStatus, setNodeStatus] = useState('checking');
   const [selectedCategory, setSelectedCategory] = useState("");
   const [allDresses, setAllDresses] = useState([]);
-  const [isFiltering, setIsFiltering] = useState(false);
   
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
@@ -39,20 +38,6 @@ const AIRecommendation = () => {
     { icon: "ri-focus-3-line", title: "Face Forward", description: "Look directly at the camera" },
     { icon: "ri-glasses-line", title: "Remove Accessories", description: "Take off glasses for accurate detection" },
     { icon: "ri-emotion-happy-line", title: "Relax", description: "Keep a neutral expression" }
-  ];
-
-  const howItWorks = [
-    { step: 1, title: "Choose Category", description: "Select your preferred dress category", icon: "ri-filter-line" },
-    { step: 2, title: "Take a Selfie", description: "Take a clear photo of your face", icon: "ri-camera-line" },
-    { step: 3, title: "AI Analysis", description: "Our AI analyzes your skin tone", icon: "ri-ai-generate-line" },
-    { step: 4, title: "Get Results", description: "Receive personalized recommendations", icon: "ri-shirt-line" }
-  ];
-
-  const faqs = [
-    { question: "How accurate is the AI analysis?", answer: "Our AI model has 95% accuracy in skin tone detection." },
-    { question: "What if I wear makeup?", answer: "For best results, take a photo with minimal makeup." },
-    { question: "Can I filter by multiple categories?", answer: "You can select one category at a time." },
-    { question: "How long does analysis take?", answer: "Typically 2-3 seconds to process." }
   ];
 
   useEffect(() => {
@@ -264,10 +249,7 @@ const AIRecommendation = () => {
     return (
       <div className="ai-page">
         <Navbar />
-        <div className="loading-container">
-          <div className="spinner"></div>
-          <p>Loading...</p>
-        </div>
+        <div className="loading"><div className="spinner"></div><p>Loading...</p></div>
         <Footer />
       </div>
     );
@@ -276,61 +258,55 @@ const AIRecommendation = () => {
   return (
     <div className="ai-page">
       <Navbar />
-      <div className="ai-container">
-        <div className="ai-header">
+      <div className="container">
+        <div className="header">
           <h1>AI Skin Tone <span>Recommendation</span></h1>
-          <p>Discover dress colors that complement your skin tone</p>
-          <div className="status-indicators">
-            <div className={`status ${flaskStatus}`}>
-              <span></span>AI Model: {flaskStatus === 'online' ? 'Connected' : 'Offline'}
+          <p>Find colors that complement your skin tone</p>
+          <div className="status">
+            <div className={`badge ${flaskStatus}`}>
+              <span></span> AI Model: {flaskStatus === 'online' ? 'Online' : 'Offline'}
             </div>
-            <div className={`status ${nodeStatus}`}>
-              <span></span>Database: {nodeStatus === 'online' ? 'Connected' : 'Offline'}
+            <div className={`badge ${nodeStatus}`}>
+              <span></span> Database: {nodeStatus === 'online' ? 'Online' : 'Offline'}
             </div>
           </div>
         </div>
 
         <div className="steps">
           <div className={`step ${step >= 1 ? 'active' : ''}`}>
-            <div className="step-num">1</div>
+            <div className="num">1</div>
             <span>Category</span>
           </div>
-          <div className={`step-line ${step >= 2 ? 'active' : ''}`}></div>
+          <div className={`line ${step >= 2 ? 'active' : ''}`}></div>
           <div className={`step ${step >= 2 ? 'active' : ''}`}>
-            <div className="step-num">2</div>
+            <div className="num">2</div>
             <span>Photo</span>
           </div>
-          <div className={`step-line ${step >= 3 ? 'active' : ''}`}></div>
+          <div className={`line ${step >= 3 ? 'active' : ''}`}></div>
           <div className={`step ${step >= 3 ? 'active' : ''}`}>
-            <div className="step-num">3</div>
+            <div className="num">3</div>
             <span>Results</span>
           </div>
         </div>
 
-        {/* Error Message */}
         {error && (
-          <div className="error-message">
+          <div className="error">
             <i className="ri-error-warning-line"></i>
             <p>{error}</p>
           </div>
         )}
 
-        {/* Step 1: Category Selection */}
+        {/* Step 1 */}
         {step === 1 && (
-          <div className="step-content">
-            <div className="card category-card-main">
-              <div className="card-icons">
-                <i className="ri-filter-line"></i>
-                <i className="ri-shirt-line"></i>
-                <i className="ri-magic-line"></i>
-              </div>
+          <div>
+            <div className="card select-card">
               <h2>Select a Category</h2>
               <p>Choose the type of outfit you're looking for</p>
               <div className="category-grid">
                 {categories.map((cat) => (
                   <button
                     key={cat.value}
-                    className={`category-btn ${selectedCategory === cat.value ? 'selected' : ''}`}
+                    className={`category ${selectedCategory === cat.value ? 'selected' : ''}`}
                     onClick={() => setSelectedCategory(cat.value)}
                   >
                     <i className={cat.icon}></i>
@@ -338,44 +314,37 @@ const AIRecommendation = () => {
                       <strong>{cat.label}</strong>
                       <span>Occasion wear</span>
                     </div>
-                    {selectedCategory === cat.value && <i className="ri-check-line check"></i>}
+                    {selectedCategory === cat.value && <i className="ri-check-line"></i>}
                   </button>
                 ))}
               </div>
               <div className="actions">
-                <button
-                  className="btn-primary"
-                  onClick={() => {
-                    if (selectedCategory) {
-                      setStep(2);
-                    } else {
-                      setError("Please select a category");
-                      setTimeout(() => setError(null), 2000);
-                    }
-                  }}
-                >
+                <button className="btn-primary" onClick={() => { if (selectedCategory) setStep(2); else setError("Select a category"); setTimeout(() => setError(null), 2000); }}>
                   Continue <i className="ri-arrow-right-line"></i>
                 </button>
-                <button className="btn-secondary" onClick={() => setSelectedCategory("")}>
-                  Clear
-                </button>
+                <button className="btn-secondary" onClick={() => setSelectedCategory("")}>Clear</button>
               </div>
             </div>
 
-            <div className="info-section">
+            <div className="how-it-works">
               <h3>How It Works</h3>
               <div className="timeline">
-                {howItWorks.map((item, i) => (
+                {[
+                  { step: 1, title: "Choose Category", desc: "Select your preferred dress category", icon: "ri-filter-line" },
+                  { step: 2, title: "Take a Selfie", desc: "Take a clear photo of your face", icon: "ri-camera-line" },
+                  { step: 3, title: "AI Analysis", desc: "Our AI analyzes your skin tone", icon: "ri-ai-generate-line" },
+                  { step: 4, title: "Get Results", desc: "Receive personalized recommendations", icon: "ri-shirt-line" }
+                ].map((item, i) => (
                   <div key={i} className="timeline-item">
                     <div className="timeline-left">
                       <div className="timeline-num">{item.step}</div>
-                      {i < howItWorks.length - 1 && <div className="timeline-line"></div>}
+                      {i < 3 && <div className="timeline-line"></div>}
                     </div>
                     <div className="timeline-right">
                       <i className={item.icon}></i>
                       <div>
                         <h4>{item.title}</h4>
-                        <p>{item.description}</p>
+                        <p>{item.desc}</p>
                       </div>
                     </div>
                   </div>
@@ -384,34 +353,24 @@ const AIRecommendation = () => {
             </div>
 
             <div className="stats">
-              <div>
-                <span>10K+</span>
-                <label>Users</label>
-              </div>
-              <div>
-                <span>95%</span>
-                <label>Accuracy</label>
-              </div>
-              <div>
-                <span>50+</span>
-                <label>Skin Tones</label>
-              </div>
-              <div>
-                <span>100+</span>
-                <label>Styles</label>
-              </div>
+              <div><span>10K+</span><label>Users</label></div>
+              <div><span>95%</span><label>Accuracy</label></div>
+              <div><span>50+</span><label>Skin Tones</label></div>
+              <div><span>100+</span><label>Styles</label></div>
             </div>
 
             <div className="faq">
               <h3>FAQs</h3>
               <div className="faq-grid">
-                {faqs.map((faq, i) => (
+                {[
+                  { q: "How accurate is the AI analysis?", a: "Our AI model has 95% accuracy." },
+                  { q: "What if I wear makeup?", a: "For best results, take a photo with minimal makeup." },
+                  { q: "Can I filter by multiple categories?", a: "You can select one category at a time." },
+                  { q: "How long does analysis take?", a: "Typically 2-3 seconds." }
+                ].map((faq, i) => (
                   <div key={i} className="faq-item">
-                    <h4>
-                      <i className="ri-question-line"></i>
-                      {faq.question}
-                    </h4>
-                    <p>{faq.answer}</p>
+                    <h4><i className="ri-question-line"></i> {faq.q}</h4>
+                    <p>{faq.a}</p>
                   </div>
                 ))}
               </div>
@@ -419,9 +378,9 @@ const AIRecommendation = () => {
           </div>
         )}
 
-        {/* Step 2: Camera */}
+        {/* Step 2 - Camera */}
         {step === 2 && (
-          <div className="step-content">
+          <div>
             <div className="card camera-card">
               {selectedCategory && (
                 <div className="category-tag">
@@ -431,7 +390,7 @@ const AIRecommendation = () => {
                 </div>
               )}
               {cameraError && (
-                <div className="error-msg">
+                <div className="camera-error">
                   <i className="ri-error-warning-line"></i>
                   <p>{cameraError}</p>
                   <button onClick={startCamera}>Try Again</button>
@@ -440,34 +399,19 @@ const AIRecommendation = () => {
               <div className="camera-frame">
                 <video ref={videoRef} autoPlay playsInline className="mirror" />
                 <canvas ref={canvasRef} style={{ display: 'none' }} />
-                {cameraActive && (
-                  <div className="face-guide">
-                    <div className="face-outline"></div>
-                    <div className="guide-text">Center your face</div>
-                  </div>
-                )}
               </div>
               <div className="camera-controls">
                 {!cameraActive ? (
-                  <button className="btn-primary" onClick={startCamera}>
-                    <i className="ri-camera-line"></i> Start Camera
-                  </button>
+                  <button className="btn-primary" onClick={startCamera}>Start Camera</button>
                 ) : (
-                  <button className="btn-primary" onClick={captureImage}>
-                    <i className="ri-camera-line"></i> Capture
-                  </button>
+                  <button className="btn-primary" onClick={captureImage}>Capture</button>
                 )}
-                <button className="btn-secondary" onClick={() => { stopCamera(); setStep(1); }}>
-                  <i className="ri-arrow-left-line"></i> Back
-                </button>
+                <button className="btn-secondary" onClick={() => { stopCamera(); setStep(1); }}>Back</button>
               </div>
               {cameraActive && (
                 <div className="tip">
                   <i className={tips[activeTip].icon}></i>
-                  <div>
-                    <strong>{tips[activeTip].title}</strong>
-                    <p>{tips[activeTip].description}</p>
-                  </div>
+                  <div><strong>{tips[activeTip].title}</strong><p>{tips[activeTip].description}</p></div>
                 </div>
               )}
             </div>
@@ -476,35 +420,24 @@ const AIRecommendation = () => {
               <div className="captured">
                 <div className="preview">
                   <img src={capturedImage} alt="Preview" />
-                  <div className="overlay">
-                    <i className="ri-check-line"></i>
-                    <span>Captured!</span>
-                  </div>
+                  <div className="overlay"><i className="ri-check-line"></i><span>Captured!</span></div>
                 </div>
                 <div className="capture-actions">
-                  <button className="btn-primary" onClick={analyzeSkinTone}>
-                    <i className="ri-analyze-line"></i> Analyze
-                  </button>
-                  <button className="btn-secondary" onClick={retakePhoto}>
-                    <i className="ri-refresh-line"></i> Retake
-                  </button>
+                  <button className="btn-primary" onClick={analyzeSkinTone}>Analyze</button>
+                  <button className="btn-secondary" onClick={retakePhoto}>Retake</button>
                 </div>
               </div>
             )}
           </div>
         )}
 
-        {/* Step 3: Results */}
+        {/* Step 3 */}
         {step === 3 && (
-          <div className="step-content">
+          <div>
             <div className="card result-card">
-              <div className="result-badge">
-                <i className="ri-magic-line"></i> Analysis Complete
-              </div>
+              <div className="result-badge"> Analysis Complete</div>
               <div className="skin-tone">
-                <div className="tone-circle">
-                  <i className="ri-user-smile-line"></i>
-                </div>
+                <div className="tone-circle"><i className="ri-user-smile-line"></i></div>
                 <div>
                   <h2>Your Skin Tone: <span>{skinTone}</span></h2>
                   <p>{toneInfo.description}</p>
@@ -521,20 +454,20 @@ const AIRecommendation = () => {
                 <h3>Colors that suit you</h3>
                 <div className="color-list">
                   {toneInfo.recommendedColors.map((c, i) => {
-                    let bgColor = "#0284c7";
-                    if (c === "Red") bgColor = "#ef4444";
-                    else if (c === "Maroon") bgColor = "#991b1b";
-                    else if (c === "Pink") bgColor = "#ec4899";
-                    else if (c === "Purple") bgColor = "#8b5cf6";
-                    else if (c === "Blue") bgColor = "#3b82f6";
-                    else if (c === "Green") bgColor = "#10b981";
-                    else if (c === "Orange") bgColor = "#f97316";
-                    else if (c === "Yellow") bgColor = "#eab308";
-                    else if (c === "Gold") bgColor = "#f59e0b";
-                    else if (c === "Silver") bgColor = "#94a3b8";
+                    let bg = "#0891b2";
+                    if (c === "Red") bg = "#ef4444";
+                    else if (c === "Maroon") bg = "#991b1b";
+                    else if (c === "Pink") bg = "#ec4899";
+                    else if (c === "Purple") bg = "#8b5cf6";
+                    else if (c === "Blue") bg = "#3b82f6";
+                    else if (c === "Green") bg = "#10b981";
+                    else if (c === "Orange") bg = "#f97316";
+                    else if (c === "Yellow") bg = "#eab308";
+                    else if (c === "Gold") bg = "#f59e0b";
+                    else if (c === "Silver") bg = "#94a3b8";
                     return (
                       <div key={i}>
-                        <div className="color-dot" style={{ background: bgColor }}></div>
+                        <div className="color-dot" style={{ background: bg }}></div>
                         <span>{c}</span>
                       </div>
                     );
@@ -547,81 +480,47 @@ const AIRecommendation = () => {
               <h3>Filter by Category</h3>
               <div className="filter-buttons">
                 {categories.map(cat => (
-                  <button
-                    key={cat.value}
-                    className={`filter-btn ${selectedCategory === cat.value ? 'active' : ''}`}
-                    onClick={() => applyCategoryFilter(cat.value)}
-                  >
-                    <i className={cat.icon}></i>
-                    {cat.label}
+                  <button key={cat.value} className={`filter ${selectedCategory === cat.value ? 'active' : ''}`} onClick={() => applyCategoryFilter(cat.value)}>
+                    <i className={cat.icon}></i> {cat.label}
                   </button>
                 ))}
-                {selectedCategory && (
-                  <button className="filter-btn clear" onClick={clearCategoryFilter}>
-                    <i className="ri-close-line"></i> Clear
-                  </button>
-                )}
+                {selectedCategory && <button className="filter clear" onClick={clearCategoryFilter}>Clear</button>}
               </div>
-              {recommendedDresses.length > 0 && (
-                <p className="count">
-                  Found {recommendedDresses.length} {selectedCategory} dress{recommendedDresses.length !== 1 ? 'es' : ''}
-                </p>
-              )}
+              {recommendedDresses.length > 0 && <p className="count">Found {recommendedDresses.length} dresses</p>}
             </div>
 
             <div className="dresses">
               <div className="dresses-header">
-                <h2>
-                  {selectedCategory ? `${selectedCategoryInfo.label} Recommendations` : "Recommended for You"}
-                </h2>
-                <Link to="/dresses" className="view-all">
-                  View All <i className="ri-arrow-right-line"></i>
-                </Link>
+                <h2>{selectedCategory ? `${selectedCategoryInfo.label} Recommendations` : "Recommended for You"}</h2>
+                <Link to="/dresses" className="view-all">View All <i className="ri-arrow-right-line"></i></Link>
               </div>
               {recommendedDresses.length === 0 ? (
                 <div className="empty">
                   <i className="ri-inbox-line"></i>
                   <h3>No dresses found</h3>
-                  <p>
-                    {selectedCategory 
-                      ? `No ${selectedCategoryInfo.label} dresses available` 
-                      : "No dresses available"}
-                  </p>
+                  <p>{selectedCategory ? `No ${selectedCategoryInfo.label} dresses available` : "No dresses available"}</p>
                   <div className="empty-actions">
-                    {selectedCategory && (
-                      <button className="btn-secondary" onClick={clearCategoryFilter}>
-                        Clear Filter
-                      </button>
-                    )}
-                    <Link to="/dresses" className="btn-primary">
-                      Browse All
-                    </Link>
+                    {selectedCategory && <button className="btn-secondary" onClick={clearCategoryFilter}>Clear Filter</button>}
+                    <Link to="/dresses" className="btn-primary">Browse All</Link>
                   </div>
                 </div>
               ) : (
                 <div className="dress-grid">
-                  {recommendedDresses.map((dress) => (
+                  {recommendedDresses.map(dress => (
                     <Link to={`/booking/${dress._id}`} key={dress._id} className="dress-link">
                       <div className="dress-card">
                         <div className="dress-image">
                           <img src={dress.image} alt={dress.name} />
-                          {dress.category && (
-                            <div className="dress-cat-badge">
-                              <i className={categories.find(c => c.value === dress.category?.toLowerCase())?.icon || "ri-shirt-line"}></i>
-                              <span>{dress.category}</span>
-                            </div>
-                          )}
+                          {dress.category && <div className="dress-cat-badge"><i className={categories.find(c => c.value === dress.category?.toLowerCase())?.icon || "ri-shirt-line"}></i><span>{dress.category}</span></div>}
                           {!dress.available && <div className="dress-unavailable">Rented</div>}
                         </div>
                         <div className="dress-info">
                           <h3>{dress.name}</h3>
                           <p>{dress.category}</p>
-                          <div className="dress-price">
-                            ₹{dress.pricePerDay}<span>/day</span>
-                            <div className="dress-meta">
-                              <span className="dress-size">{dress.size}</span>
-                              <span className="dress-color" style={{ backgroundColor: dress.color?.toLowerCase() }}></span>
-                            </div>
+                          <div className="dress-price">NPR {dress.pricePerDay}<span>/day</span></div>
+                          <div className="dress-meta">
+                            <span className="dress-size">{dress.size}</span>
+                            <span className="dress-color" style={{ backgroundColor: dress.color?.toLowerCase() }}></span>
                           </div>
                         </div>
                       </div>
@@ -630,46 +529,10 @@ const AIRecommendation = () => {
                 </div>
               )}
             </div>
-
-            <div className="card share-card">
-              <h3>Love your results? Share with friends!</h3>
-              <div className="share-buttons">
-                <button className="share-btn whatsapp" onClick={() => handleShare('whatsapp')}>
-                  <i className="ri-whatsapp-line"></i> WhatsApp
-                </button>
-                <button className="share-btn facebook" onClick={() => handleShare('facebook')}>
-                  <i className="ri-facebook-line"></i> Facebook
-                </button>
-                <button className="share-btn twitter" onClick={() => handleShare('twitter')}>
-                  <i className="ri-twitter-line"></i> Twitter
-                </button>
-                <button className="share-btn copy" onClick={() => handleShare('copy')}>
-                  <i className="ri-link"></i> Copy Link
-                </button>
-              </div>
-            </div>
-
             <div className="results-actions">
-              <button
-                className="btn-secondary"
-                onClick={() => {
-                  stopCamera();
-                  setStep(1);
-                  setCapturedImage(null);
-                  setSkinTone(null);
-                  setRecommendedDresses([]);
-                  setAllDresses([]);
-                  setSelectedCategory("");
-                }}
-              >
-                <i className="ri-refresh-line"></i> Start Over
-              </button>
-              <button className="btn-secondary" onClick={() => setStep(2)}>
-                <i className="ri-camera-line"></i> Take Another Photo
-              </button>
-              <Link to="/dresses" className="btn-primary">
-                <i className="ri-grid-line"></i> Browse All
-              </Link>
+              <button className="btn-secondary" onClick={() => { stopCamera(); setStep(1); setCapturedImage(null); setSkinTone(null); setRecommendedDresses([]); setAllDresses([]); setSelectedCategory(""); }}>Start Over</button>
+              <button className="btn-secondary" onClick={() => setStep(2)}>Take Another Photo</button>
+              <Link to="/dresses" className="btn-primary">Browse All</Link>
             </div>
           </div>
         )}
