@@ -6,7 +6,7 @@ const fs = require("fs");
 const returnsDir = path.join(__dirname, "../uploads/returns");
 if (!fs.existsSync(returnsDir)) {
   fs.mkdirSync(returnsDir, { recursive: true });
-  console.log("✅ Created uploads/returns directory");
+  console.log(" Created uploads/returns directory");
 }
 
 // Configure storage for return photos (saves to disk)

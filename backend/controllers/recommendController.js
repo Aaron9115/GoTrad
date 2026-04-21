@@ -40,7 +40,7 @@ exports.recommendBySkinTone = async (req, res) => {
     console.log("Category filter received:", categoryFilter || "No filter");
 
     // Build query with CASE-INSENSITIVE color matching
-    // This will match "blue", "Blue", "BLUE" all the same
+    
     let query = {
       available: true,
       $or: recommendedColors.map(color => ({

@@ -105,10 +105,11 @@ app.use((err, req, res, next) => {
     error: process.env.NODE_ENV === 'development' ? err : {}
   });
 });
-
+if (process.env.NODE_ENV !== "test") {
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(` Server running on port ${PORT}`);
   console.log(` Frontend URL: http://localhost:5173`);
   console.log(` API Base URL: http://localhost:${PORT}/api`);
 });
+}

@@ -14,11 +14,28 @@ const createBooking = async (req, res) => {
       phone, 
       totalAmount, 
       securityDeposit,
-      refundDetails 
+      refundDetails,
+      deliveryMethod,
+      deliveryFee,
+      agreedToTerms,
+      agreedToDigitalAgreement
     } = req.body;
 
     if (!dressId || !startDate || !endDate || !address || !city || !phone) {
       return res.status(400).json({ message: "All fields are required" });
+    }
+
+    let finalDeliveryMethod = deliveryMethod || "pickup";
+    if (finalDeliveryMethod !== "pickup" && finalDeliveryMethod !== "delivery") {
+      return res.status(400).json({ message: "Delivery method must be 'pickup' or 'delivery'" });
+    }
+
+    if (!agreedToTerms) {
+      return res.status(400).json({ message: "You must agree to the terms and conditions" });
+    }
+
+    if (!agreedToDigitalAgreement) {
+      return res.status(400).json({ message: "You must agree to the digital rental agreement" });
     }
 
     const dress = await Dress.findById(dressId);
@@ -27,7 +44,6 @@ const createBooking = async (req, res) => {
       return res.status(400).json({ message: "Dress not available" });
     }
 
-    // Create booking with PENDING status and refund details
     const booking = await Booking.create({
       renter: req.user._id,
       dress: dressId,
@@ -38,6 +54,8 @@ const createBooking = async (req, res) => {
         city,
         phone
       },
+      deliveryMethod: finalDeliveryMethod,
+      deliveryFee: deliveryFee || 0,
       totalAmount: totalAmount || 0,
       securityDeposit: securityDeposit || 1000,
       refundDetails: refundDetails || {
@@ -54,6 +72,9 @@ const createBooking = async (req, res) => {
           qrCode: ""
         }
       },
+      agreedToTerms: agreedToTerms,
+      agreedToDigitalAgreement: agreedToDigitalAgreement,
+      agreementAcceptedAt: new Date(),
       status: "pending",
       paymentStatus: "pending",
       refundStatus: "pending"
@@ -89,7 +110,6 @@ const getMyBookings = async (req, res) => {
 // Owner: get all bookings of their dresses
 const getOwnerBookings = async (req, res) => {
   try {
-    // Find dresses of this owner
     const dresses = await Dress.find({ owner: req.user._id });
     const dressIds = dresses.map(d => d._id);
 
@@ -111,7 +131,6 @@ const getOwnerBookings = async (req, res) => {
 // Get pending bookings for owner (for the dashboard tab)
 const getOwnerPendingBookings = async (req, res) => {
   try {
-    // Find dresses of this owner
     const dresses = await Dress.find({ owner: req.user._id });
     const dressIds = dresses.map(d => d._id);
 
@@ -167,16 +186,13 @@ const confirmBooking = async (req, res) => {
       return res.status(404).json({ message: "Booking not found" });
     }
 
-    // Check if the logged-in user owns this dress
     if (booking.dress.owner.toString() !== req.user._id.toString()) {
       return res.status(401).json({ message: "Not authorized" });
     }
 
-    // Update booking status
     booking.status = "confirmed";
     await booking.save();
 
-    // Mark dress as unavailable
     const dress = await Dress.findById(booking.dress._id);
     if (dress) {
       dress.available = false;
@@ -199,12 +215,10 @@ const rejectBooking = async (req, res) => {
       return res.status(404).json({ message: "Booking not found" });
     }
 
-    // Check if the logged-in user owns this dress
     if (booking.dress.owner.toString() !== req.user._id.toString()) {
       return res.status(401).json({ message: "Not authorized" });
     }
 
-    // Update booking status
     booking.status = "rejected";
     await booking.save();
 
@@ -215,7 +229,7 @@ const rejectBooking = async (req, res) => {
   }
 };
 
-// Cancel booking (renter only)
+// Cancel booking - only pending bookings can be cancelled
 const cancelBooking = async (req, res) => {
   try {
     const booking = await Booking.findById(req.params.id);
@@ -224,45 +238,38 @@ const cancelBooking = async (req, res) => {
       return res.status(404).json({ message: "Booking not found" });
     }
 
-    // Only renter can cancel
     if (booking.renter.toString() !== req.user._id.toString()) {
-      return res.status(401).json({ message: "Not authorized" });
+      return res.status(401).json({ message: "Not authorized to cancel this booking" });
     }
 
-    // Check if booking is already cancelled
     if (booking.status === "cancelled") {
       return res.status(400).json({ message: "Booking is already cancelled" });
     }
 
-    // Check if booking can be cancelled
-    if (!booking.canBeCancelled()) {
-      return res.status(400).json({ message: "Booking cannot be cancelled at this stage" });
+    if (booking.status !== "pending") {
+      return res.status(400).json({ 
+        message: `Cannot cancel booking with status: "${booking.status}". Only pending bookings can be cancelled.`
+      });
     }
 
-    // Store the previous status BEFORE changing it
-    const wasConfirmed = booking.status === "confirmed";
-
-    // Update booking status
     booking.status = "cancelled";
     await booking.save();
 
-    // If it was confirmed, make dress available again
-    if (wasConfirmed) {
-      const dress = await Dress.findById(booking.dress);
-      if (dress) {
-        dress.available = true;
-        await dress.save();
+    res.json({ 
+      message: "Booking cancelled successfully",
+      booking: {
+        _id: booking._id,
+        status: booking.status
       }
-    }
-
-    res.json({ message: "Booking cancelled successfully" });
+    });
+    
   } catch (error) {
     console.error("Cancel booking error:", error);
     res.status(500).json({ message: error.message });
   }
 };
 
-// Process refund for returned booking (owner action)
+// Process refund for returned booking
 const processRefund = async (req, res) => {
   try {
     const booking = await Booking.findById(req.params.id).populate("renter");
@@ -273,12 +280,10 @@ const processRefund = async (req, res) => {
 
     const dress = await Dress.findById(booking.dress);
     
-    // Check if the logged-in user owns this dress
     if (dress.owner.toString() !== req.user._id.toString()) {
       return res.status(401).json({ message: "Not authorized" });
     }
 
-    // Check if booking is returned and refund not processed
     if (booking.status !== "returned") {
       return res.status(400).json({ message: "Booking must be returned to process refund" });
     }
@@ -287,14 +292,9 @@ const processRefund = async (req, res) => {
       return res.status(400).json({ message: "Refund already processed" });
     }
 
-    // Update refund status
     booking.refundStatus = "processing";
     await booking.save();
 
-    // Here you would integrate with actual payment gateway
-    // For now, we'll simulate successful refund processing
-
-    // After successful refund processing
     booking.refundStatus = "completed";
     booking.refundAmount = booking.securityDeposit;
     booking.refundProcessedAt = new Date();
@@ -327,7 +327,6 @@ const getRefundDetails = async (req, res) => {
 
     const dress = await Dress.findById(booking.dress);
     
-    // Check authorization (renter or owner)
     const isRenter = booking.renter._id.toString() === req.user._id.toString();
     const isOwner = dress && dress.owner.toString() === req.user._id.toString();
     
@@ -348,7 +347,7 @@ const getRefundDetails = async (req, res) => {
   }
 };
 
-// Delete booking (renter only) - for cancelled or completed bookings
+// Delete booking for cancelled or returned bookings
 const deleteBooking = async (req, res) => {
   try {
     const booking = await Booking.findById(req.params.id);
@@ -357,19 +356,16 @@ const deleteBooking = async (req, res) => {
       return res.status(404).json({ message: "Booking not found" });
     }
 
-    // Only renter can delete their own bookings
     if (booking.renter.toString() !== req.user._id.toString()) {
       return res.status(401).json({ message: "Not authorized" });
     }
 
-    // Only allow deletion of cancelled or returned bookings
     if (booking.status !== "cancelled" && booking.status !== "returned") {
       return res.status(400).json({ 
         message: "Only cancelled or returned bookings can be deleted" 
       });
     }
 
-    // Delete the booking
     await booking.deleteOne();
 
     res.json({ message: "Booking deleted successfully" });

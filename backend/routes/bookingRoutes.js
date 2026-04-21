@@ -22,6 +22,25 @@ router.post("/create", protect, createBooking);
 // Renter views own bookings
 router.get("/my", protect, getMyBookings);
 
+// Check if a dress has active bookings
+router.get("/dress/:dressId/active", protect, async (req, res) => {
+  try {
+    const Booking = require("../models/Booking");
+    const { dressId } = req.params;
+    
+    const activeBooking = await Booking.findOne({
+      dress: dressId,
+      status: { $in: ["confirmed", "booked"] },
+      endDate: { $gte: new Date() }
+    });
+    
+    res.json(!!activeBooking);
+  } catch (error) {
+    console.error("Check active booking error:", error);
+    res.status(500).json(false);
+  }
+});
+
 // Owner views all bookings of their dresses
 router.get("/owner", protect, getOwnerBookings);
 

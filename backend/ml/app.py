@@ -14,14 +14,20 @@ app = Flask(__name__)
 
 CORS(app, resources={
     r"/*": {
-        "origins": ["http://localhost:5173", "http://127.0.0.1:5173"],
+        "origins": ["http://localhost:5173", "http://127.0.0.1:5173", "http://localhost:3000"],
         "methods": ["POST", "OPTIONS", "GET"],
         "allow_headers": ["Content-Type", "Authorization", "X-Requested-With"]
     }
 })
 
-# Load skin tone model (unchanged)
-skin_tone_model = tf.keras.models.load_model("skin_tone_model.h5")
+# Load skin tone model 
+try:
+    skin_tone_model = tf.keras.models.load_model("skin_tone_model.h5")
+    print(" Skin tone model loaded successfully")
+except Exception as e:
+    skin_tone_model = None
+    print(f" Skin tone model not found: {e}")
+
 try:
     viton_model = tf.keras.models.load_model("viton_cnn_model.h5")
     print(" Virtual Try-On model loaded successfully")
@@ -75,7 +81,7 @@ def remove_background(dress_img, threshold_override=None):
     return dress_img, mask
 
 
-def overlay_dress_with_mask(person_img, dress_img, offset_percent=30, threshold=None, scale=1.2, horizontal_offset=300):
+def overlay_dress_with_mask(person_img, dress_img, offset_percent=30, threshold=None, scale=1.2, horizontal_offset=50):
     """
     Overlay dress on person, using mask to remove background.
     scale: width multiplier relative to person width (default 1.2 = 120% of person width)
@@ -95,7 +101,6 @@ def overlay_dress_with_mask(person_img, dress_img, offset_percent=30, threshold=
 
     # Horizontal position based on percentage
     h_pos = max(0, min(100, horizontal_offset))
-    # left edge position: when h_pos=0, start_x=0; h_pos=100, start_x = person_w - target_width
     start_x = int((person_w - target_width) * h_pos / 100)
 
     # Vertical position
@@ -138,6 +143,10 @@ def predict_skin_tone():
         }), 200
     if "image" not in request.files:
         return jsonify({"error": "No image provided"}), 400
+    
+    if skin_tone_model is None:
+        return jsonify({"error": "Skin tone model not loaded"}), 503
+        
     image_file = request.files["image"]
     try:
         image = preprocess_image(image_file.read())
@@ -150,6 +159,85 @@ def predict_skin_tone():
         })
     except Exception as e:
         return jsonify({"error": f"Image processing failed: {str(e)}"}), 500
+
+
+@app.route("/detect-face-position", methods=["POST", "OPTIONS"])
+def detect_face_position():
+    """Detect face and return neck/shoulder position for dress placement"""
+    if request.method == "OPTIONS":
+        return jsonify({"message": "OK"}), 200
+    
+    if "image" not in request.files:
+        return jsonify({"error": "No image provided"}), 400
+    
+    image_file = request.files["image"]
+    
+    try:
+        # Read image
+        image_bytes = image_file.read()
+        nparr = np.frombuffer(image_bytes, np.uint8)
+        img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+        
+        if img is None:
+            return jsonify({"error": "Could not read image"}), 400
+            
+        height, width = img.shape[:2]
+        
+        # Convert to grayscale for face detection
+        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        
+        # Load face cascade
+        face_cascade = cv2.CascadeClassifier(
+            cv2.data.haarcascades + 'haarcascade_frontalface_default.xml'
+        )
+        
+        # Detect faces
+        faces = face_cascade.detectMultiScale(gray, 1.1, 4)
+        
+        if len(faces) == 0:
+            return jsonify({
+                "face_detected": False,
+                "message": "No face detected in the image"
+            }), 200
+        
+        # Get the largest face
+        (x, y, w, h) = max(faces, key=lambda f: f[2] * f[3])
+        
+        # Calculate neck position (below face)
+        neck_y = y + h + (h * 0.15)  # 15% below face
+        neck_x = x + (w / 2)  # Center of face horizontally
+        
+        # Shoulder width approximation (1.5x face width)
+        shoulder_width = w * 1.5
+        
+        # Convert to percentages (0-100)
+        neck_y_percent = (neck_y / height) * 100
+        neck_x_percent = (neck_x / width) * 100
+        shoulder_width_percent = (shoulder_width / width) * 100
+        
+        # Clamp values to valid ranges
+        neck_y_percent = max(10, min(60, neck_y_percent))
+        neck_x_percent = max(20, min(80, neck_x_percent))
+        shoulder_width_percent = max(60, min(150, shoulder_width_percent))
+        
+        print(f"Face detected at: x={x}, y={y}, w={w}, h={h}")
+        print(f"Dress position: y={neck_y_percent}%, x={neck_x_percent}%, width={shoulder_width_percent}%")
+        
+        return jsonify({
+            "face_detected": True,
+            "face_rect": {"x": int(x), "y": int(y), "width": int(w), "height": int(h)},
+            "neck_y_percent": round(neck_y_percent, 1),
+            "neck_x_percent": round(neck_x_percent, 1),
+            "shoulder_width_percent": round(shoulder_width_percent, 1),
+            "image_width": width,
+            "image_height": height
+        })
+        
+    except Exception as e:
+        print(f"Face detection error: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({"error": f"Face detection failed: {str(e)}"}), 500
 
 
 @app.route("/virtual-tryon", methods=["POST", "OPTIONS"])
@@ -183,27 +271,32 @@ def virtual_tryon():
         try:
             scale = float(scale)
         except:
-            scale = 1.2
+            scale = 1.0
     else:
-        scale = 1.2
+        scale = 1.0
 
     horizontal_offset = request.form.get("horizontal_offset")
     if horizontal_offset is not None:
         try:
             horizontal_offset = float(horizontal_offset)
         except:
-            horizontal_offset = 60
+            horizontal_offset = 50
     else:
-        horizontal_offset = 60   # shift to the right
+        horizontal_offset = 50
 
     person_bytes = person_file.read()
     person_np = np.frombuffer(person_bytes, np.uint8)
     person_img = cv2.imdecode(person_np, cv2.IMREAD_COLOR)
+    if person_img is None:
+        return jsonify({"error": "Could not read person image"}), 400
     person_img = cv2.cvtColor(person_img, cv2.COLOR_BGR2RGB)
 
     dress_bytes = dress_file.read()
     dress_np = np.frombuffer(dress_bytes, np.uint8)
     dress_img = cv2.imdecode(dress_np, cv2.IMREAD_UNCHANGED)
+    if dress_img is None:
+        return jsonify({"error": "Could not read dress image"}), 400
+        
     if dress_img.shape[2] == 4:
         dress_img = cv2.cvtColor(dress_img, cv2.COLOR_BGRA2RGBA)
     else:
@@ -243,11 +336,30 @@ def health_check():
         "status": "healthy",
         "message": "Flask server is running",
         "models": {
-            "skin_tone": "loaded",
+            "skin_tone": "loaded" if skin_tone_model is not None else "not loaded",
             "virtual_tryon": "active (smart background removal, scaling, horizontal shift)"
-        }
+        },
+        "endpoints": [
+            "/predict-skin-tone (POST)",
+            "/detect-face-position (POST)",
+            "/virtual-tryon (POST)",
+            "/health (GET)"
+        ]
     }
     return jsonify(status), 200
+
+
+@app.route("/", methods=["GET"])
+def home():
+    return jsonify({
+        "message": "Flask ML Server is running",
+        "endpoints": {
+            "POST /predict-skin-tone": "Upload image to detect skin tone",
+            "POST /detect-face-position": "Upload image to detect face and neck position",
+            "POST /virtual-tryon": "Upload person and dress images for virtual try-on",
+            "GET /health": "Check server health"
+        }
+    }), 200
 
 
 @app.before_request
@@ -260,11 +372,12 @@ def handle_preflight():
 if __name__ == "__main__":
     print("=" * 50)
     print("Flask server starting on port 5001...")
-    print("Accepting requests from: http://localhost:5173")
+    print("Accepting requests from: http://localhost:5173, http://localhost:3000")
     print("Endpoints:")
     print("   - POST  /predict-skin-tone (upload image for skin tone)")
     print("   - GET   /predict-skin-tone (info)")
+    print("   - POST  /detect-face-position (upload image for face detection)")
     print("   - POST  /virtual-tryon (upload person and dress images)")
     print("   - GET   /health (server status)")
     print("=" * 50)
-    app.run(port=5001, debug=True)
+    app.run(host='0.0.0.0', port=5001, debug=True)

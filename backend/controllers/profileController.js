@@ -5,6 +5,12 @@ const fs = require("fs");
 const path = require("path");
 const bcrypt = require("bcryptjs");
 
+// Helper function to validate email format
+const isValidEmail = (email) => {
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return emailRegex.test(email);
+};
+
 // @desc    Get user profile
 // @route   GET /api/profile
 // @access  Private
@@ -31,9 +37,28 @@ const updateProfile = async (req, res) => {
       return res.status(404).json({ message: "User not found" });
     }
 
+    // EMAIL VALIDATION - ONLY FROM BACKEND
+    if (req.body.email && req.body.email !== user.email) {
+      // Validate email format
+      if (!isValidEmail(req.body.email)) {
+        return res.status(400).json({ 
+          message: "Please enter a valid email address (e.g., name@example.com)" 
+        });
+      }
+      
+      // Check if email already exists in database
+      const existingUser = await User.findOne({ email: req.body.email });
+      if (existingUser && existingUser._id.toString() !== user._id.toString()) {
+        return res.status(400).json({ 
+          message: "Email already exists. Please use a different email address." 
+        });
+      }
+      
+      user.email = req.body.email;
+    }
+
     // Update basic fields
     user.name = req.body.name || user.name;
-    user.email = req.body.email || user.email;
     user.phone = req.body.phone || user.phone;
     user.address = req.body.address || user.address;
     user.city = req.body.city || user.city;
@@ -42,7 +67,6 @@ const updateProfile = async (req, res) => {
 
     // Update bank details if provided
     if (req.body.bankDetails) {
-      // If bankDetails is sent as JSON string
       if (typeof req.body.bankDetails === 'string') {
         try {
           user.bankDetails = JSON.parse(req.body.bankDetails);
@@ -50,7 +74,6 @@ const updateProfile = async (req, res) => {
           console.error("Error parsing bank details:", e);
         }
       } else {
-        // If sent as object
         user.bankDetails = {
           accountHolder: req.body.bankDetails.accountHolder || user.bankDetails?.accountHolder || "",
           bankName: req.body.bankDetails.bankName || user.bankDetails?.bankName || "",
@@ -84,6 +107,11 @@ const updateProfile = async (req, res) => {
 
     // If password is being updated
     if (req.body.password) {
+      if (req.body.password.length < 6) {
+        return res.status(400).json({ 
+          message: "Password must be at least 6 characters long" 
+        });
+      }
       const salt = await bcrypt.genSalt(10);
       user.password = await bcrypt.hash(req.body.password, salt);
     }
@@ -107,6 +135,11 @@ const updateProfile = async (req, res) => {
     });
   } catch (error) {
     console.error("Update profile error:", error);
+    if (error.code === 11000 && error.keyPattern?.email) {
+      return res.status(400).json({ 
+        message: "Email already exists. Please use a different email address." 
+      });
+    }
     res.status(500).json({ message: error.message });
   }
 };
@@ -126,7 +159,6 @@ const uploadProfilePicture = async (req, res) => {
       return res.status(404).json({ message: "User not found" });
     }
 
-    // Delete old profile picture if it exists and is not the default
     if (user.profileImage && 
         !user.profileImage.includes("placeholder") && 
         !user.profileImage.includes("via.placeholder.com")) {
@@ -137,13 +169,11 @@ const uploadProfilePicture = async (req, res) => {
       }
     }
 
-    // Update user with new profile image path
     const imageUrl = `/uploads/profiles/${req.file.filename}`;
     user.profileImage = imageUrl;
     await user.save();
 
     console.log("Profile picture uploaded for user:", user.email);
-    console.log("Image URL:", imageUrl);
 
     res.json({ 
       message: "Profile picture uploaded successfully",
@@ -170,7 +200,6 @@ const uploadQRCode = async (req, res) => {
       return res.status(404).json({ message: "User not found" });
     }
 
-    // Delete old QR code if it exists
     if (user.digitalWallet?.qrCode) {
       const oldQrPath = path.join(__dirname, "..", user.digitalWallet.qrCode);
       if (fs.existsSync(oldQrPath)) {
@@ -179,7 +208,6 @@ const uploadQRCode = async (req, res) => {
       }
     }
 
-    // Update user with new QR code path
     const qrUrl = `/uploads/qrcodes/${req.file.filename}`;
     
     if (!user.digitalWallet) {
@@ -322,7 +350,6 @@ const getUserActivity = async (req, res) => {
   }
 };
 
-// EXPORT ALL FUNCTIONS
 module.exports = {
   getProfile,
   updateProfile,

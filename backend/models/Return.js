@@ -58,7 +58,9 @@ const returnSchema = new mongoose.Schema(
       resolvedAt: { type: Date },
       resolution: { type: String },
       refundAmount: { type: Number },
-      notes: { type: String }
+      notes: { type: String },
+      ownerAddress: { type: String },
+      returnMethod: { type: String }
     },
     returnInitiatedAt: { type: Date, default: Date.now },
     returnCompletedAt: { type: Date }
