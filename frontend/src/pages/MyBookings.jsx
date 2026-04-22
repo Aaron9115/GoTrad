@@ -255,7 +255,7 @@ const MyBookings = () => {
                       <div className="notice"><i className="ri-time-line"></i> Awaiting owner confirmation</div>
                     )}
                     <div className="actions">
-                      <Link to={`/dress/${booking.dress?._id}`} className="btn-view">View Dress</Link>
+                      <Link to="/dresses" className="btn-view">View Dress</Link>
                       {canCancel && (
                         <button 
                           className="btn-cancel" 
